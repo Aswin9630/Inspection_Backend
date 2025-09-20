@@ -8,6 +8,7 @@ const authRoutes = require("./routes/authentication/authRouter")
 const customerRoutes = require("./routes/customer/customerRouter")
 const inspectorRoutes = require("./routes/inspector/inspectorRouter")
 const paymentRoutes = require("./routes/payment/paymentRouter")
+const quickServicesRoutes = require("./routes/customer/quickServiceRouter")
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -28,6 +29,7 @@ app.use("/auth",authRoutes);
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes);
 app.use("/payment", paymentRoutes);
+app.use("/quick-services",quickServicesRoutes)
 
 const serverAndDBconnect = async () => {   
   try { 

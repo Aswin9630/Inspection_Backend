@@ -32,7 +32,6 @@ const inspectionEnquirySchema = new mongoose.Schema(
     },
     subCommodity: {
       type: String,
-      required: true,
     },
     volume: {
       type: String,

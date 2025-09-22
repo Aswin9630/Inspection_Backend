@@ -3,6 +3,8 @@ const QuickServiceLocation = require("../../models/QuickService/quickServiceMode
 const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
 const Payment = require("../../models/Payment/paymentModel");
 const razorpay = require("../../config/razorpay");
+const errorHandler= require("../../utils/errorHandler")
+const InspectorsList = require("../../models/QuickService/quickServiceModel")
 
 const getLocationList = async (req, res, next) => {
   try {
@@ -13,21 +15,46 @@ const getLocationList = async (req, res, next) => {
   }
 };
 
+const getGroupedLocationsByState = async (req, res, next) => {
+  try {
+    const inspectors = await QuickServiceLocation.find().select("state location price");
 
+    const grouped = {};
+
+    inspectors.forEach(({ state, location, price }) => {
+      if (!grouped[state]) {
+        grouped[state] = [];
+      }
+
+      // Avoid duplicate entries for same location
+      const alreadyExists = grouped[state].some(entry => entry.location === location);
+      if (!alreadyExists) {
+        grouped[state].push({ location, price });
+      }
+    });
+
+    res.json({ success: true, data: grouped });
+  } catch (error) {
+    next(errorHandler(500, "Failed to group location data"));
+  }
+};
+
+ 
 const submitQuickServiceForm = async (req, res, next) => {
   try {
     if (req.user.role !== "customer") {
       return next(errorHandler(403, "Unauthorized. Please login."));
     }
 
-    const {
+    const { 
       location,
       commodityCategory,
       description,
       inspectionDate,
       inspectionTypes,
       inspectionService,
-      contact
+      contact,
+      volume
     } = req.body;
 
     const locationData = await InspectorsList.findOne({ location });
@@ -50,6 +77,7 @@ const submitQuickServiceForm = async (req, res, next) => {
       inspectionTypes,
       inspectionService,
       contact,
+      volume,
       selectionSummary: "Quick Service",
     });
 
@@ -60,6 +88,7 @@ const submitQuickServiceForm = async (req, res, next) => {
       payment_capture: 1,
     });
 
+    
     const payment = await Payment.create({
       enquiry: enquiry._id,
       customer: req.user._id,
@@ -83,9 +112,10 @@ const submitQuickServiceForm = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(errorHandler(500, "Failed to submit quick service form"));
+     console.error("Quick service error:", error); 
+    next(errorHandler(500,error.message));
   }
-};
+}; 
 
 
 const verifyQuickServicePayment = async (req, res, next) => {
@@ -123,4 +153,5 @@ module.exports = {
   getLocationList,
   submitQuickServiceForm,
   verifyQuickServicePayment,
+  getGroupedLocationsByState
 };

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const quickServiceLocationSchema = new mongoose.Schema({
+const inspectorsInspectorsList = new mongoose.Schema({
   state: { type: String, required: true },
   location: { type: String, required: true },
   contactNumber: { type: String },
@@ -8,6 +8,6 @@ const quickServiceLocationSchema = new mongoose.Schema({
   price: { type: Number, required: true },
 }, { timestamps: true });
 
-quickServiceLocationSchema.index({ location: 1 });
+inspectorsInspectorsList.index({ location: 1 });
 
-module.exports = mongoose.model("QuickServiceLocation", quickServiceLocationSchema);
+module.exports = mongoose.model("InspectorsList", inspectorsInspectorsList);

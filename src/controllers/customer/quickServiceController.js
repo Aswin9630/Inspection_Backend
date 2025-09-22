@@ -20,16 +20,25 @@ const submitQuickServiceForm = async (req, res, next) => {
       return next(errorHandler(403, "Unauthorized. Please login."));
     }
 
-    const { location, commodityCategory, inspectionDate, inspectionTypes, contact } = req.body;
+    const {
+      location,
+      commodityCategory,
+      description,
+      inspectionDate,
+      inspectionTypes,
+      inspectionService,
+      contact
+    } = req.body;
 
-    const locationData = await QuickServiceLocation.findOne({ location });
+    const locationData = await InspectorsList.findOne({ location });
     if (!locationData) return next(errorHandler(404, "Location not found"));
 
     const enquiry = await InspectionEnquiry.create({
       customer: req.user._id,
       inspectionLocation: location,
-      country: "India",
+      country: locationData.state || "India",
       commodityCategory,
+      description,
       inspectionDate: {
         from: new Date(inspectionDate),
         to: new Date(inspectionDate),
@@ -39,6 +48,7 @@ const submitQuickServiceForm = async (req, res, next) => {
       status: "draft",
       urgencyLevel: "High",
       inspectionTypes,
+      inspectionService,
       contact,
       selectionSummary: "Quick Service",
     });
@@ -76,9 +86,6 @@ const submitQuickServiceForm = async (req, res, next) => {
     next(errorHandler(500, "Failed to submit quick service form"));
   }
 };
-
-
-
 
 
 const verifyQuickServicePayment = async (req, res, next) => {

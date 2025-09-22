@@ -44,7 +44,6 @@ const inspectionEnquirySchema = new mongoose.Schema(
     },
     platformFee: {
       type: Number,
-      required: true,
     },
 
     inspectionDate: {
@@ -92,7 +91,7 @@ const inspectionEnquirySchema = new mongoose.Schema(
     certifications: [
       {
         type: String,
-        enum: ["COC", "ISO", "FDA", "Other"],
+        enum: ["COC", "ISO", "GAFTA", "FOSFE","NABCB","NABL"],
       },
     ],
 

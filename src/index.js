@@ -9,12 +9,14 @@ const customerRoutes = require("./routes/customer/customerRouter")
 const inspectorRoutes = require("./routes/inspector/inspectorRouter")
 const paymentRoutes = require("./routes/payment/paymentRouter")
 const quickServicesRoutes = require("./routes/customer/quickServiceRouter")
+const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorLocationDetailsRouter");
 
 const PORT = process.env.PORT || 3000;
 const app = express();
 
 app.use(cors({
   origin:process.env.FRONTEND_URL,
+  methods:["GET","POST","PATCH","PUT","DELETE"],
   credentials:true,
 }
 )); 
@@ -30,6 +32,7 @@ app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/quick-services",quickServicesRoutes)
+app.use("/admin/locations", adminLocationRoutes);
 
 const serverAndDBconnect = async () => {   
   try { 

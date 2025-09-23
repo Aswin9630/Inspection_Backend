@@ -26,7 +26,6 @@ const getGroupedLocationsByState = async (req, res, next) => {
         grouped[state] = [];
       }
 
-      // Avoid duplicate entries for same location
       const alreadyExists = grouped[state].some(entry => entry.location === location);
       if (!alreadyExists) {
         grouped[state].push({ location, price });
@@ -150,7 +149,7 @@ const verifyQuickServicePayment = async (req, res, next) => {
 };
 
 module.exports = {
-  getLocationList,
+  // getLocationList,
   submitQuickServiceForm,
   verifyQuickServicePayment,
   getGroupedLocationsByState

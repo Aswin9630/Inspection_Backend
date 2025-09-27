@@ -99,31 +99,31 @@ const signUpValidation = () => {
             return true;
           }),
 
-          check("billingDetails.accountNumber").custom((value, { req }) => {
+          check("accountNumber").custom((value, { req }) => {
             const requiresDocs =
               req.body.acceptsRequests === "true" ||
               req.body.acceptsRequests === true;
-            if (requiresDocs && !value) {
+            if (requiresDocs && (!value || value.trim() === "")) {
               throw new Error("Account number is required to accept requests");
             }
             return true;
           }),
 
-          check("billingDetails.bankName").custom((value, { req }) => {
+          check("bankName").custom((value, { req }) => {
             const requiresDocs =
               req.body.acceptsRequests === "true" ||
               req.body.acceptsRequests === true;
-            if (requiresDocs && !value) {
+            if (requiresDocs && (!value || value.trim() === "")) {
               throw new Error("Bank name is required to accept requests");
             }
             return true;
           }),
 
-          check("billingDetails.ifscCode").custom((value, { req }) => {
+          check("ifscCode").custom((value, { req }) => {
             const requiresDocs =
               req.body.acceptsRequests === "true" ||
               req.body.acceptsRequests === true;
-            if (requiresDocs && !value) {
+            if (requiresDocs && (!value || value.trim() === "")) {
               throw new Error("IFSC code is required to accept requests");
             }
             return true;

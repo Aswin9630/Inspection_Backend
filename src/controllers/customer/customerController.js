@@ -157,17 +157,14 @@ const confirmBid = async (req, res, next) => {
       return next(errorHandler(400, "Only active bids can be confirmed"));
     }
 
-    // Update bid
     bid.status = "won";
     await bid.save();
 
-    // Mark others as lost
     await Bid.updateMany(
       { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
       { $set: { status: "lost" } }
     );
 
-    // Update enquiry
     bid.enquiry.confirmedBid = bid._id;
     bid.enquiry.status = "completed";
     await bid.enquiry.save();

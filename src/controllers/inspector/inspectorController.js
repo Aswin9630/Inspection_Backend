@@ -10,7 +10,7 @@ const getAvailableEnquiries = async (req, res, next) => {
     }
 
     const enquiries = await InspectionEnquiry.find({
-      status: "submitted",
+      status: "draft",
     }).sort({ createdAt: -1 });
 
     const adjustedEnquiries = enquiries.map((enquiry) => {
@@ -31,96 +31,96 @@ const getAvailableEnquiries = async (req, res, next) => {
 };
 
 const placeBid = async (req, res, next) => {
-  try {
-    if (req.user.role !== "inspector") {
-      return next(errorHandler(403, "Only inspectors can bid"));
-    }
+    try {
+      if (req.user.role !== "inspector") {
+        return next(errorHandler(403, "Only inspectors can bid"));
+      }
 
-    const inspector = await Inspector.findById(req.user._id).select(
-      "acceptsRequests identityDocuments billingDetails"
-    );
+      const inspector = await Inspector.findById(req.user._id).select(
+        "acceptsRequests identityDocuments billingDetails"
+      );
 
-    if (!inspector) {
-      return next(errorHandler(404, "Inspector not found"));
-    }
+      if (!inspector) {
+        return next(errorHandler(404, "Inspector not found"));
+      }
 
-    if (inspector.acceptsRequests) {
-      const { aadhaarCard } = inspector.identityDocuments || {};
-      const { accountNumber, bankName, ifscCode } =
-        inspector.billingDetails || {};
+      if (inspector.acceptsRequests) {
+        const { aadhaarCard } = inspector.identityDocuments || {};
+        const { accountNumber, bankName, ifscCode } =
+          inspector.billingDetails || {};
 
-      const isMissing = (val) =>
-        !val || typeof val !== "string" || val.trim().length === 0;
+        const isMissing = (val) =>
+          !val || typeof val !== "string" || val.trim().length === 0;
 
-      if (
-        isMissing(aadhaarCard) ||
-        isMissing(accountNumber) ||
-        isMissing(bankName) ||
-        isMissing(ifscCode)
-      ) {
+        if (
+          isMissing(aadhaarCard) ||
+          isMissing(accountNumber) ||
+          isMissing(bankName) ||
+          isMissing(ifscCode)
+        ) {
+          return next(
+            errorHandler(
+              403,
+              "You must submit Aadhaar and complete banking details before placing a bid"
+            )
+          );
+        }
+      } else {
         return next(
           errorHandler(
             403,
-            "You must submit Aadhaar and complete banking details before placing a bid"
+            "You must enable 'acceptsRequests' and submit required documents to place a bid"
           )
         );
       }
-    } else {
-      return next(
-        errorHandler(
-          403,
-          "You must enable 'acceptsRequests' and submit required documents to place a bid"
-        )
-      );
-    }
 
-    const { enquiryId } = req.params;
-    const { amount, note } = req.body;
+      const { enquiryId } = req.params;
+      const { amount, note } = req.body;
 
-    const enquiry = await InspectionEnquiry.findById(enquiryId);
-    if (!enquiry || enquiry.status !== "submitted") {
-      return next(errorHandler(404, "Enquiry not available for bidding"));
-    }
+      const enquiry = await InspectionEnquiry.findById(enquiryId);
+      if (!enquiry || enquiry.status !== "draft") {
+        return next(errorHandler(404, "Enquiry not available for bidding"));
+      }
 
-    const platformFee = enquiry.platformFee;
-    const customerViewAmount = amount + platformFee;
+      const platformFee = enquiry.platformFee;
+      const customerViewAmount = amount + platformFee;
 
-    let bid = await Bid.findOne({
-      enquiry: enquiryId,
-      inspector: req.user._id,
-    });
-
-    if (bid) {
-      bid.amount = amount;
-      bid.note = note;
-      bid.customerViewAmount = customerViewAmount;
-      await bid.save();
-    } else {
-      bid = await Bid.create({
+      let bid = await Bid.findOne({
         enquiry: enquiryId,
         inspector: req.user._id,
-        amount,
-        note,
-        customerViewAmount,
       });
+
+      if (bid) {
+        bid.amount = amount;
+        bid.note = note;
+        bid.customerViewAmount = customerViewAmount;
+        await bid.save();
+      } else {
+        bid = await Bid.create({
+          enquiry: enquiryId,
+          inspector: req.user._id,
+          amount,
+          note,
+          customerViewAmount,
+        });
+      }
+
+      const populatedBid = await Bid.findById(bid._id).populate(
+        "inspector",
+        "name email mobileNumber commodities inspectorType"
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Bid placed successfully",
+        bid: {
+          amount: populatedBid.amount,
+          inspector: populatedBid.inspector,
+        }, 
+      });
+    } catch (error) {
+      next(errorHandler(500, "Failed to place bid: " + error.message));
     }
-
-    const populatedBid = await Bid.findById(bid._id).populate(
-      "inspector",
-      "name email mobileNumber commodities inspectorType"
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Bid placed successfully",
-      bid: {
-        amount: populatedBid.amount,
-        inspector: populatedBid.inspector,
-      }, 
-    });
-  } catch (error) {
-    next(errorHandler(500, "Failed to place bid: " + error.message));
-  }
 };
 
 const cancelBid = async (req, res, next) => {
@@ -243,6 +243,7 @@ const updateInspectorDocumentsController = async (req, res, next) => {
     next(errorHandler(500, "Failed to update documents: " + error.message));
   }
 };
+
 
 module.exports = {
   getAvailableEnquiries,

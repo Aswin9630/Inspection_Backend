@@ -32,7 +32,6 @@ const signUpController = async (req, res, next) => {
           publishRequirements,
         } = req.body;
 
-        
         if (!name || !email || !password || !countryCode || !mobileNumber) {
           return next(errorHandler(400, "Missing required customer fields"));
         }
@@ -43,7 +42,7 @@ const signUpController = async (req, res, next) => {
         };
 
         if (
-          publishRequirements==="true" &&
+          publishRequirements === "true" &&
           (!documents?.tradeLicense || !documents?.importExportCertificate)
         ) {
           return next(
@@ -77,8 +76,11 @@ const signUpController = async (req, res, next) => {
           acceptsRequests,
           commodities,
           accountNumber,
+          bankName,
+          ifscCode,
         } = req.body;
 
+        
         if (
           !name ||
           !email ||
@@ -89,18 +91,28 @@ const signUpController = async (req, res, next) => {
         ) {
           return next(errorHandler(400, "Missing required inspector fields"));
         }
-
         const identityDocuments = {
           aadhaarCard: req.files?.aadhaarCard?.[0]?.path || null,
         };
 
         const billingDetails = {
-          accountNumber: accountNumber || null,
+          accountNumber:
+            accountNumber && accountNumber.trim() !== ""
+              ? accountNumber.trim()
+              : null,
+          bankName: bankName && bankName.trim() !== "" ? bankName.trim() : null,
+          ifscCode: ifscCode && ifscCode.trim() !== "" ? ifscCode.trim() : null,
         };
+        
 
         if (
-          acceptsRequests==="true" &&
-          (!identityDocuments?.aadhaarCard || !billingDetails?.accountNumber)
+          acceptsRequests === "true" &&
+          (!identityDocuments?.aadhaarCard ||
+            !accountNumber || accountNumber.trim() === "" || 
+            !bankName || bankName.trim() === "" ||
+            !ifscCode || ifscCode.trim() === ""
+           
+          )
         ) {
           return next(
             errorHandler(
@@ -166,12 +178,13 @@ const signUpController = async (req, res, next) => {
           return next(errorHandler(400, "Missing required company fields"));
         }
 
-          const documents = {
+        const documents = {
           businessLicense: req.files?.businessLicense?.[0]?.path || null,
-          incorporationCertificate: req.files?.incorporationCertificate?.[0]?.path || null,
+          incorporationCertificate:
+            req.files?.incorporationCertificate?.[0]?.path || null,
           insuranceDocument: req.files?.insuranceDocument?.[0]?.path || null,
         };
-         if (
+        if (
           !documents.businessLicense ||
           !documents.incorporationCertificate ||
           !documents.insuranceDocument
@@ -201,7 +214,9 @@ const signUpController = async (req, res, next) => {
           website,
           yearEstablished,
           employeeCount,
-          servicesOffered:Array.isArray(servicesOffered) ? servicesOffered : [servicesOffered],
+          servicesOffered: Array.isArray(servicesOffered)
+            ? servicesOffered
+            : [servicesOffered],
           companyType,
           gstNumber,
           panNumber,

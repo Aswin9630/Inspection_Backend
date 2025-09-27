@@ -4,6 +4,7 @@ const { getUserProfileController,logoutController,signInController,signUpControl
 const {handleValidationErrors,signInValidation,signUpValidation} = require("../../middleware/validation");
 const verifyUser = require("../../middleware/verifyUser");
 const createUploader = require("../../middleware/upload");
+
 const customerUploader = createUploader("customers");
 const inspectorUploader = createUploader("inspectors");
 const companyUploader = createUploader("inspectionCompanies");
@@ -23,8 +24,7 @@ router.post(
   "/signup/inspector",
   inspectorUploader.fields([
     { name: "aadhaarCard", maxCount: 1 },
-    { name: "billingProof", maxCount: 1 },
-  ]),
+  ]), 
   signUpValidation(),
   handleValidationErrors,
   signUpController

@@ -88,7 +88,8 @@ const raiseEnquiryController = async (req, res, next) => {
 
     const newEnquiry = await InspectionEnquiry.create(enquiryData);
 
-    const { platformFee: _platformFee, ...sanitizedEnquiry } = newEnquiry.toObject();
+    const { platformFee: _platformFee, ...sanitizedEnquiry } =
+      newEnquiry.toObject();
 
     res.status(201).json({
       success: true,
@@ -130,11 +131,11 @@ const getBidsForEnquiry = async (req, res, next) => {
       status: { $in: ["active", "won"] },
     }).populate("inspector", "name company rating inspectionsCount");
 
-    const amounts = bids.map((b) => b.amount);
+    const viewAmounts = bids.map((b) => b.customerViewAmount);
     const stats = {
-      lowestBid: Math.min(...amounts),
-      highestBid: Math.max(...amounts),
-      averageBid: amounts.reduce((a, b) => a + b, 0) / amounts.length,
+      lowestBid: Math.min(...viewAmounts),
+      highestBid: Math.max(...viewAmounts),
+      averageBid: viewAmounts.reduce((a, b) => a + b, 0) / viewAmounts.length,
       totalBids: bids.length,
     };
 

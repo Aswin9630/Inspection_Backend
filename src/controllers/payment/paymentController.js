@@ -1,5 +1,7 @@
+const crypto = require("crypto");
 const Payment = require("../../models/Payment/paymentModel");
 const Customer = require("../../models/Customer/customerModel");
+const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
 const razorpayInstance = require("../../config/razorpay");
 const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
@@ -14,6 +16,10 @@ const createOrderForEnquiry = async (req, res, next) => {
     }
 
     const { enquiryId } = req.params;
+    const { amount } = req.body;
+    if (!amount || typeof amount !== "number") {
+      return next(errorHandler(400, "Bid amount is required"));
+    }
 
     const enquiry = await InspectionEnquiry.findById(enquiryId);
     if (!enquiry || enquiry.customer.toString() !== req.user._id.toString()) {
@@ -27,13 +33,13 @@ const createOrderForEnquiry = async (req, res, next) => {
     }
 
     const customer = await Customer.findById(req.user._id).select(
-      "name email phoneNumber"
+      "name email mobileNumber"
     );
     if (!customer) {
       return next(errorHandler(404, "Customer profile not found"));
     }
 
-    const amountInPaise = enquiry.inspectionBudget * 100;
+    const amountInPaise = amount * 100;
 
     const razorpayOrder = await razorpayInstance.orders.create({
       amount: amountInPaise,
@@ -45,7 +51,7 @@ const createOrderForEnquiry = async (req, res, next) => {
     const payment = await Payment.create({
       enquiry: enquiry._id,
       customer: req.user._id,
-      amount: enquiry.inspectionBudget,
+      amount: amount,
       currency: "INR",
       status: "pending",
       phase: "initial",
@@ -58,10 +64,11 @@ const createOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
+      keyId: process.env.RAZORPAY_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
-        phoneNumber: customer.phoneNumber,
+        mobileNumber: customer.mobileNumber,
       },
     });
   } catch (error) {
@@ -84,44 +91,148 @@ const webHooksController = async (req, res, next) => {
       return next(errorHandler(400, "Webhook Signature is not valid"));
     }
 
+    const event = req.body.event;
     const paymentDetails = req.body.payload.payment.entity;
-    const orderId = paymentDetails.order_id;
-    const payment = await PaymentModel.findOne({ orderId });
-    if (!payment) {
-      return next(errorHandler(400, "Payment record not found"));
+
+    if (event === "payment.captured" && paymentDetails) {
+      const orderId = paymentDetails.order_id;
+      const razorpayPaymentId = paymentDetails.id;
+
+      const payment = await Payment.findOne({ razorpayOrderId: orderId });
+      if (!payment || payment.status === "paid") {
+        return res.status(404).json({
+          success: false,
+          message: "Payment record not found or already processed",
+        });
+      }
+
+      payment.status = "paid";
+      payment.razorpayPaymentId = razorpayPaymentId;
+      payment.paymentMode = "razorpay";
+      await payment.save();
+
+      const enquiry = await InspectionEnquiry.findById(payment.enquiry);
+      if (!enquiry) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Enquiry not found" });
+      }
+
+      const bid = await Bid.findOne({
+        enquiry: enquiry._id,
+        customerViewAmount: payment.amount,
+        status: "active",
+      });
+
+      if (!bid) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Matching bid not found" });
+      }
+
+      bid.status = "won";
+      await bid.save();
+
+      await Bid.updateMany(
+        { enquiry: enquiry._id, _id: { $ne: bid._id }, status: "active" },
+        { $set: { status: "lost" } }
+      );
+
+      enquiry.confirmedBid = bid._id;
+      enquiry.status = "completed";
+      await enquiry.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Bid confirmed via webhook",
+        bidId: bid._id,
+      });
     }
-    payment.status = paymentDetails.status;
+
+    return res
+      .status(200)
+      .json({ message: "Webhook received, no action taken" });
+  } catch (error) {
+    console.error(error.message);
+    return next(errorHandler(400, error.message));
+  }
+};
+
+const verifyPaymentAndConfirmBid = async (req, res, next) => {
+  try {
+    const {
+      paymentId,
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature,
+      bidId,
+    } = req.body;
+
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(razorpayOrderId + "|" + razorpayPaymentId)
+      .digest("hex");
+
+    if (generatedSignature !== razorpaySignature) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Razorpay signature" });
+    }
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment || payment.status === "paid") {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found or already processed",
+      });
+    }
+
+    payment.status = "paid";
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.paymentMode = "razorpay";
     await payment.save();
 
-    const user = await User.findById(payment.userId);
-    if (!user) {
-      return next(errorHandler(400, "User not found"));
+    const bid = await Bid.findById(bidId).populate("enquiry");
+    if (!bid || bid.status !== "active") {
+      return res.status(404).json({
+        success: false,
+        message: "Bid not found or already confirmed",
+      });
     }
-    user.isPremium = true;
-    user.membershipType = payment.notes.membershipType;
-    await user.save();
+    if (bid.status === "won") {
+      return res
+        .status(200)
+        .json({
+          success: true,
+          message: "Bid already confirmed",
+          bidId: bid._id,
+        });
+    }
 
-    return res.status(200).json({ mes: "Webhook received successfully" });
+    bid.status = "won";
+    await bid.save();
+
+    await Bid.updateMany(
+      { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
+      { $set: { status: "lost" } }
+    );
+
+    bid.enquiry.confirmedBid = bid._id;
+    bid.enquiry.status = "completed";
+    await bid.enquiry.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Payment verified and bid confirmed",
+      bidId: bid._id,
+    });
   } catch (error) {
-    console.error(error.message);
-    return next(errorHandler(400, error.message));
+    next(errorHandler(500, "Verification failed: " + error.message));
   }
 };
 
-const paymentVerify = async (req, res, next) => {
-  const { id } = req.user;
-  const user = await User.findById(id);
-
-  try {
-    if (user?.isPremium) {
-      return res.json({ isPremium: true });
-    } else {
-      return res.json({ isPremium: false });
-    }
-  } catch (error) {
-    console.error(error.message);
-    return next(errorHandler(400, error.message));
-  }
+module.exports = {
+  createOrderForEnquiry,
+  webHooksController,
+  verifyPaymentAndConfirmBid,
 };
-
-module.exports = { createOrderForEnquiry, webHooksController, paymentVerify };

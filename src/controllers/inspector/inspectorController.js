@@ -218,11 +218,15 @@ const updateInspectorDocumentsController = async (req, res, next) => {
     if (bankName) updates["billingDetails.bankName"] = bankName;
     if (ifscCode) updates["billingDetails.ifscCode"] = ifscCode;
 
-    const isComplete =
-      updates["identityDocuments.aadhaarCard"] &&
-      updates["billingDetails.accountNumber"] &&
-      updates["billingDetails.bankName"] &&
-      updates["billingDetails.ifscCode"];
+    // Fetch current inspector to check completeness
+    const inspector = await Inspector.findById(req.user._id).lean();
+
+    const hasAadhaar = updates["identityDocuments.aadhaarCard"] || inspector?.identityDocuments?.aadhaarCard;
+    const hasAccount = updates["billingDetails.accountNumber"] || inspector?.billingDetails?.accountNumber;
+    const hasBank = updates["billingDetails.bankName"] || inspector?.billingDetails?.bankName;
+    const hasIFSC = updates["billingDetails.ifscCode"] || inspector?.billingDetails?.ifscCode;
+
+    const isComplete = hasAadhaar && hasAccount && hasBank && hasIFSC;
 
     if (isComplete) {
       updates.acceptsRequests = true;
@@ -245,6 +249,7 @@ const updateInspectorDocumentsController = async (req, res, next) => {
 };
 
 
+ 
 module.exports = {
   getAvailableEnquiries,
   placeBid,

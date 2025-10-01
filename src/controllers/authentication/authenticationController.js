@@ -320,7 +320,7 @@ const logoutController = (req, res, next) => {
     });
     return res.status(200).json({
       success: true,
-      message: "Logout successful. Token cleared from client.",
+      message: "Logout successful",
     });
   } catch (error) {
     next({

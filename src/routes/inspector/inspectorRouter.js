@@ -7,7 +7,8 @@ const {
   cancelBid,
   getMyBids,
   getLowestBidsPerEnquiry,
-  updateInspectorDocumentsController
+  updateInspectorDocumentsController,
+  getInspectorHistory
 } = require("../../controllers/inspector/inspectorController");
 const verifyUser = require("../../middleware/verifyUser");
 
@@ -18,6 +19,7 @@ router.post("/bid/:enquiryId", verifyUser, placeBid);
 router.delete("/bid/:bidId", verifyUser, cancelBid);
 router.get("/my-bids", verifyUser, getMyBids);
 router.get("/lowest-bids", verifyUser, getLowestBidsPerEnquiry);
+router.get("/history", verifyUser, getInspectorHistory)
 router.patch(
   "/profile/updateDocuments",
   verifyUser,
@@ -26,6 +28,6 @@ router.patch(
   ]),
   updateInspectorDocumentsController
 );
-
+ 
 
 module.exports = router;

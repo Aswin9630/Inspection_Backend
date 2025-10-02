@@ -6,10 +6,14 @@ const {
   // getLocationList,
   submitQuickServiceForm,
   getGroupedLocationsByState,
-  verifyQuickServicePayment,
+  getQuickServiceHistory,
+  getQuickServiceDetails
 } = require("../../controllers/customer/quickServiceController");
 
 router.get("/locations", getGroupedLocationsByState);
 router.post("/submit", verifyUser, submitQuickServiceForm);
+router.get("/quick-requests", verifyUser, getQuickServiceHistory);
+router.get("/quick-requests/:id", verifyUser, getQuickServiceDetails)
+
 
 module.exports = router;

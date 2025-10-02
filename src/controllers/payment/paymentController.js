@@ -8,6 +8,7 @@ const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
 const {
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
+const QuickServiceRequest = require("../../models/QuickService/quickServicesModel")
 
 const createOrderForEnquiry = async (req, res, next) => {
   try {
@@ -167,9 +168,13 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
       razorpaySignature,
       bidId,
     } = req.body;
+    
+    if (!paymentId || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature || !bidId) {
+  return next(errorHandler(400, "Missing required payment verification fields"));
+}
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(razorpayOrderId + "|" + razorpayPaymentId)
       .digest("hex");
 
@@ -231,8 +236,69 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
   }
 };
 
+const verifyQuickServicePayment = async (req, res, next) => {
+  try {
+    const {
+      paymentId,
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature,
+    } = req.body;
+
+    if (!paymentId || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+      return next(errorHandler(400, "Missing required payment verification fields"));
+    }
+
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+
+    if (generatedSignature !== razorpaySignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Razorpay signature",
+      });
+    }
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment || payment.status === "paid") {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found or already processed",
+      });
+    }
+
+    payment.status = "paid";
+    payment.razorpayPaymentId = razorpayPaymentId;
+    payment.paymentMode = "razorpay";
+    await payment.save();
+
+    const quickRequest = await QuickServiceRequest.findById(payment.enquiry);
+    if (!quickRequest) {
+      return res.status(404).json({
+        success: false,
+        message: "Quick service request not found",
+      });
+    }
+
+    quickRequest.status = "paid";
+    await quickRequest.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Quick service payment verified",
+      requestId: quickRequest._id,
+    });
+  } catch (error) {
+    next(errorHandler(500, "Quick service verification failed: " + error.message));
+  }
+};
+
+
 module.exports = {
   createOrderForEnquiry,
   webHooksController,
   verifyPaymentAndConfirmBid,
+  verifyQuickServicePayment
 };

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const allowedCommodities = [
   "Textiles & Garments",
@@ -18,7 +18,6 @@ const allowedCommodities = [
   "Sports Equipment",
   "Other",
 ];
-
 
 const inspectorSchema = new mongoose.Schema(
   {
@@ -100,6 +99,13 @@ const inspectorSchema = new mongoose.Schema(
           return this.acceptsRequests;
         },
       },
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
     },
     commodities: [
       {

@@ -61,13 +61,19 @@ const customerSchema = new mongoose.Schema(
           return this.publishRequirements;
         },
       },
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+      emailVerificationToken: {
+        type: String,
+      },
     },
-    
-     resetPasswordToken: String,
+
+    resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
 
 module.exports = mongoose.model("Customer", customerSchema);
- 

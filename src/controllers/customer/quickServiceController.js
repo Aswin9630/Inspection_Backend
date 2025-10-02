@@ -1,10 +1,9 @@
-const crypto = require("crypto");
 const QuickServiceLocation = require("../../models/QuickService/quickServiceModel");
-const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
 const Payment = require("../../models/Payment/paymentModel");
 const razorpay = require("../../config/razorpay");
 const errorHandler= require("../../utils/errorHandler")
 const InspectorsList = require("../../models/QuickService/quickServiceModel")
+const QuickServiceRequest = require("../../models/QuickService/quickServicesModel")
 
 const getLocationList = async (req, res, next) => {
   try {
@@ -14,6 +13,7 @@ const getLocationList = async (req, res, next) => {
     next(errorHandler(500, "Failed to fetch location list"));
   }
 };
+
 
 const getGroupedLocationsByState = async (req, res, next) => {
   try {
@@ -38,14 +38,14 @@ const getGroupedLocationsByState = async (req, res, next) => {
   }
 };
 
- 
+
 const submitQuickServiceForm = async (req, res, next) => {
   try {
     if (req.user.role !== "customer") {
       return next(errorHandler(403, "Unauthorized. Please login."));
     }
 
-    const { 
+    const {
       location,
       commodityCategory,
       description,
@@ -53,104 +53,127 @@ const submitQuickServiceForm = async (req, res, next) => {
       inspectionTypes,
       inspectionService,
       contact,
-      volume
+      volume,
     } = req.body;
 
     const locationData = await InspectorsList.findOne({ location });
     if (!locationData) return next(errorHandler(404, "Location not found"));
 
-    const enquiry = await InspectionEnquiry.create({
+    const price = locationData.price;
+    const platformFee = Math.round(price * 0.3);
+
+    const razorpayOrder = await razorpay.orders.create({
+      amount: price * 100,
+      currency: "INR",
+      receipt: `quick_${Date.now()}`,
+      payment_capture: 1,
+    });
+
+    const quickRequest = await QuickServiceRequest.create({
       customer: req.user._id,
-      inspectionLocation: location,
-      country: locationData.state || "India",
+      location: locationData.location,
+      state: locationData.state,
       commodityCategory,
       description,
-      inspectionDate: {
-        from: new Date(inspectionDate),
-        to: new Date(inspectionDate),
-      },
-      inspectionBudget: locationData.price,
-      platformFee: Math.round(locationData.price * 0.3),
-      status: "draft",
-      urgencyLevel: "High",
+      inspectionDate: new Date(inspectionDate),
       inspectionTypes,
       inspectionService,
       contact,
       volume,
-      selectionSummary: "Quick Service",
+      price,
+      platformFee,
+      status: "draft",
+      urgencyLevel: "High",
+      razorpayOrderId: razorpayOrder.id,
     });
 
-    const razorpayOrder = await razorpay.orders.create({
-      amount: locationData.price * 100,
-      currency: "INR",
-      receipt: `quick_${enquiry._id}`,
-      payment_capture: 1,
-    });
-
-    
     const payment = await Payment.create({
-      enquiry: enquiry._id,
+      enquiry: quickRequest._id,
       customer: req.user._id,
-      amount: locationData.price,
+      amount: price,
       currency: "INR",
       status: "pending",
       phase: "initial",
       razorpayOrderId: razorpayOrder.id,
     });
 
+    quickRequest.paymentId = payment._id;
+    await quickRequest.save();
+
     res.status(201).json({
       success: true,
-      message: "Quick service enquiry created",
+      message: "Quick service request submitted",
       order: razorpayOrder,
-      enquiryId: enquiry._id,
+      requestId: quickRequest._id,
       paymentId: payment._id,
+       keyId: process.env.RAZORPAY_KEY_ID,
       customerDetails: {
         name: req.user.name,
         email: req.user.email,
-        phoneNumber: req.user.phoneNumber,
+        mobileNumber: req.user.mobileNumber,
       },
     });
   } catch (error) {
-     console.error("Quick service error:", error); 
-    next(errorHandler(500,error.message));
-  }
-}; 
-
-
-const verifyQuickServicePayment = async (req, res, next) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return next(errorHandler(403, "Invalid payment signature"));
-    }
-
-    const payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
-    if (!payment) return next(errorHandler(404, "Payment record not found"));
-
-    payment.status = "paid";
-    payment.razorpayPaymentId = razorpay_payment_id;
-    await payment.save();
-
-    await InspectionEnquiry.findByIdAndUpdate(payment.enquiry, {
-      status: "submitted",
-    });
-
-    res.json({ success: true, message: "Payment verified and enquiry submitted" });
-  } catch (error) {
-    next(errorHandler(500, "Payment verification failed"));
+    console.error("Quick service error:", error);
+    next(errorHandler(500, error.message));
   }
 };
 
+const getQuickServiceHistory = async (req, res, next) => {
+  try {
+    if (req.user.role !== "customer") {
+      return next(errorHandler(403, "Unauthorized access"));
+    }
+
+    const requests = await QuickServiceRequest.find({ customer: req.user._id })
+      .sort({ createdAt: -1 })
+      .select("location inspectionDate status price platformFee createdAt");
+
+    res.status(200).json({
+      success: true,
+      requests,
+    });
+  } catch (error) {
+    next(errorHandler(500, "Failed to fetch quick service history"));
+  }
+};
+
+
+const getQuickServiceDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const request = await QuickServiceRequest.findById(id).populate("paymentId");
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Quick service request not found",
+      });
+    }
+
+    if (request.customer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to this request",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      request,
+    });
+  } catch (error) {
+    next(errorHandler(500, "Failed to fetch request details: " + error.message));
+  }
+};
+
+
+
 module.exports = {
-  // getLocationList,
+  getLocationList,
   submitQuickServiceForm,
-  verifyQuickServicePayment,
-  getGroupedLocationsByState
+  getGroupedLocationsByState,
+  getQuickServiceHistory,
+  getQuickServiceDetails
 };

@@ -1,4 +1,5 @@
 const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
+const Payment = require("../../models/Payment/paymentModel");
 const Customer = require("../../models/Customer/customerModel");
 const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
@@ -245,6 +246,97 @@ const updateCustomerDocumentsController = async (req, res, next) => {
   }
 };
 
+const getEnquiryDetails = async (req, res, next) => {
+  try {
+    const enquiry = await InspectionEnquiry.findById(req.params.id)
+      .populate({
+        path: "confirmedBid",
+        populate: { path: "inspector", select: "name company email mobileNumber" },
+      });
+
+    if (!enquiry || enquiry.customer.toString() !== req.user._id.toString()) {
+      return next(errorHandler(404, "Enquiry not found or unauthorized"));
+    }
+
+    const payment = await Payment.findOne({ enquiry: enquiry._id, status: "paid" });
+    console.log("enquiry", enquiry);
+    console.log("payment", payment);
+    
+    res.json({
+      success: true,
+      enquiry,
+      bid: enquiry.confirmedBid,
+      payment,
+    });
+  } catch (err) { 
+    next(errorHandler(500, "Failed to fetch enquiry details"));
+  }
+};
+
+const getCustomerPayments = async (req, res, next) => {
+  try {
+    if (req.user.role !== "customer") {
+      return next(errorHandler(403, "Only customers can view payment history"));
+    }
+
+    const payments = await Payment.find({
+      customer: req.user._id,
+      status: "paid",
+    })
+      .sort({ updatedAt: -1 })
+      .populate({
+        path: "enquiry",
+        select: "commodityCategory inspectionLocation volume status",
+      });
+
+    res.json({ success: true, payments });
+  } catch (error) {
+    next(errorHandler(500, "Failed to fetch payment history"));
+  }
+};
+
+const getCustomerAnalysis = async (req, res, next) => {
+  try {
+    if (req.user.role !== "customer") {
+      return next(errorHandler(403, "Only customers can access analysis"));
+    }
+
+    const customerId = req.user._id;
+
+    const customer = await Customer.findById(customerId).select("name email mobileNumber country");
+
+    const totalEnquiries = await InspectionEnquiry.countDocuments({ customer: customerId });
+    const completedInspections = await InspectionEnquiry.countDocuments({ customer: customerId, status: "completed" });
+    const pendingInspections = await InspectionEnquiry.countDocuments({ customer: customerId, status: { $ne: "completed" } });
+    const completionRate = totalEnquiries > 0 ? Math.round((completedInspections / totalEnquiries) * 100) : 0;
+
+    const payments = await Payment.find({ customer: customerId });
+    const paidPayments = payments.filter(p => p.status === "paid");
+    const totalPaid = paidPayments.reduce((sum, p) => sum + p.amount, 0);
+    const pendingPayment = payments.filter(p => p.status !== "paid").reduce((sum, p) => sum + p.amount, 0);
+    const averagePayment = paidPayments.length > 0 ? Math.round(totalPaid / paidPayments.length) : 0;
+    const paymentSuccessRate = payments.length > 0 ? Math.round((paidPayments.length / payments.length) * 100) : 0;
+
+    return res.status(200).json({
+      success: true,
+      customer,
+      stats: {
+        totalEnquiries,
+        completedInspections,
+        pendingInspections,
+        completionRate,
+        totalPaid,
+        pendingPayment,
+        averagePayment,
+        paymentSuccessRate,
+      },
+    });
+  } catch (error) {
+    next(errorHandler(500, "Failed to generate analysis: " + error.message));
+  }
+};
+
+
 module.exports = {
   raiseEnquiryController,
   getMyEnquiries,
@@ -252,4 +344,7 @@ module.exports = {
   confirmBid,
   cancelEnquiry,
   updateCustomerDocumentsController,
+  getEnquiryDetails,
+  getCustomerPayments,
+  getCustomerAnalysis
 };

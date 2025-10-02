@@ -69,7 +69,7 @@ const placeBid = async (req, res, next) => {
         return next(
           errorHandler(
             403,
-            "You must enable 'acceptsRequests' and submit required documents to place a bid"
+            "You must submit Aadhaar and complete banking details before placing a bid"
           )
         );
       }
@@ -249,6 +249,17 @@ const updateInspectorDocumentsController = async (req, res, next) => {
 };
 
 
+const getInspectorHistory = async (req, res, next) => {
+  try {
+    const inspectorId = req.user._id;
+    const bids = await Bid.find({ inspector: inspectorId }).populate("enquiry").sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, bids });
+  } catch (err) {
+    next(errorHandler(500, "Failed to fetch bid history"));
+  }
+};
+
  
 module.exports = {
   getAvailableEnquiries,
@@ -257,4 +268,5 @@ module.exports = {
   getMyBids,
   getLowestBidsPerEnquiry,
   updateInspectorDocumentsController,
+  getInspectorHistory
 };

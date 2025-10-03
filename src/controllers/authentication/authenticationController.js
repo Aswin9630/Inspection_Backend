@@ -308,9 +308,9 @@ const signInController = async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return next(errorHandler(401, "Invalid credentials"));
 
-    // if (!user.isVerified) {
-    //   return next(errorHandler(403, "Please verify your email before signing in"));
-    // }
+    if (!user.isVerified) {
+      return next(errorHandler(403, "Please verify your email before signing in"));
+    }
 
     token = generateTokenAndCookie(res, user);
 

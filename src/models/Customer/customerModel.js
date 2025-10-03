@@ -63,7 +63,7 @@ const customerSchema = new mongoose.Schema(
       },
     },
     isVerified: { type: Boolean, default: false },
-    verificationToken: { type: String },
+    emailVerificationToken: { type: String },
     verificationExpires: { type: Date },
 
     resetPasswordToken: String,

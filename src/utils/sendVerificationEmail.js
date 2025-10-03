@@ -19,9 +19,10 @@ const sendVerificationEmail = async (email, name, token, role) => {
       <h2>Welcome, ${name}!</h2>
       <p>Please verify your email to activate your account:</p>
       <a href="${link}" style="padding:10px 20px;background:#22c55e;color:white;border-radius:5px;text-decoration:none;">Verify Email</a>
-      <p>This link expires in 24 hours.</p>
+      <p>This link expires in 10 min.</p>
     `,
   });
+
 };
 
 module.exports = sendVerificationEmail;

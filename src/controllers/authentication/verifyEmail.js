@@ -24,7 +24,6 @@ const verifyEmailController = async (req, res, next) => {
     user.emailVerificationToken = undefined;
     user.verificationExpires = undefined;
     await user.save();
-
     res.send("✅ Email verified! You can now log in.");
   } catch (error) {
     next(error);

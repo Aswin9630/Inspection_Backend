@@ -130,6 +130,9 @@ const inspectionCompanySchema = new mongoose.Schema(
     },
      resetPasswordToken: String,
     resetPasswordExpire: Date,
+    isVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
+    verificationExpires: { type: Date },
   },
   { timestamps: true }
 );

@@ -248,7 +248,7 @@ const signUpController = async (req, res, next) => {
 
     const token = crypto.randomBytes(32).toString("hex");
     userData.emailVerificationToken = token;
-    userData.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+    userData.verificationExpires = Date.now() + 60 * 60 * 1000;
     userData.isVerified = false;
 
     const newUser = await Model.create(userData);
@@ -308,9 +308,9 @@ const signInController = async (req, res, next) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return next(errorHandler(401, "Invalid credentials"));
 
-    // if (!user.isVerified) {
-    //   return next(errorHandler(403, "Please verify your email before signing in"));
-    // }
+    if (!user.isVerified) {
+      return next(errorHandler(403, "Please verify your email before signing in"));
+    }
 
     token = generateTokenAndCookie(res, user);
 

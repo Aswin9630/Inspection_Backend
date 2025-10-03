@@ -102,9 +102,9 @@ const inspectorSchema = new mongoose.Schema(
       },
     },
 
-    isVerified: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String },
-    verificationExpires: { type: Date },
+    verificationExpires: { type: Date }, 
 
     commodities: [
       {

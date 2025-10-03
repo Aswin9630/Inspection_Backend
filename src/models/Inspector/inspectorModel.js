@@ -80,6 +80,7 @@ const inspectorSchema = new mongoose.Schema(
         },
       },
     },
+    
     billingDetails: {
       accountNumber: {
         type: String,
@@ -100,13 +101,11 @@ const inspectorSchema = new mongoose.Schema(
         },
       },
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    emailVerificationToken: {
-      type: String,
-    },
+
+    isVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
+    verificationExpires: { type: Date },
+
     commodities: [
       {
         commodity: {

@@ -8,7 +8,8 @@ const {
   getMyBids,
   getLowestBidsPerEnquiry,
   updateInspectorDocumentsController,
-  getInspectorHistory
+  getInspectorHistory,
+  getWonBids
 } = require("../../controllers/inspector/inspectorController");
 const verifyUser = require("../../middleware/verifyUser");
 
@@ -28,6 +29,7 @@ router.patch(
   ]),
   updateInspectorDocumentsController
 );
+router.get("/won-bids", verifyUser, getWonBids);
  
 
 module.exports = router;

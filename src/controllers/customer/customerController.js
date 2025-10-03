@@ -259,8 +259,6 @@ const getEnquiryDetails = async (req, res, next) => {
     }
 
     const payment = await Payment.findOne({ enquiry: enquiry._id, status: "paid" });
-    console.log("enquiry", enquiry);
-    console.log("payment", payment);
     
     res.json({
       success: true,
@@ -335,7 +333,6 @@ const getCustomerAnalysis = async (req, res, next) => {
     next(errorHandler(500, "Failed to generate analysis: " + error.message));
   }
 };
-
 
 module.exports = {
   raiseEnquiryController,

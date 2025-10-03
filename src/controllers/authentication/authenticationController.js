@@ -1,4 +1,6 @@
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
+const sendVerificationEmail = require("../../utils/sendVerificationEmail");
 const Customer = require("../../models/Customer/customerModel");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");
@@ -80,7 +82,6 @@ const signUpController = async (req, res, next) => {
           ifscCode,
         } = req.body;
 
-        
         if (
           !name ||
           !email ||
@@ -103,16 +104,16 @@ const signUpController = async (req, res, next) => {
           bankName: bankName && bankName.trim() !== "" ? bankName.trim() : null,
           ifscCode: ifscCode && ifscCode.trim() !== "" ? ifscCode.trim() : null,
         };
-        
 
         if (
           acceptsRequests === "true" &&
           (!identityDocuments?.aadhaarCard ||
-            !accountNumber || accountNumber.trim() === "" || 
-            !bankName || bankName.trim() === "" ||
-            !ifscCode || ifscCode.trim() === ""
-           
-          )
+            !accountNumber ||
+            accountNumber.trim() === "" ||
+            !bankName ||
+            bankName.trim() === "" ||
+            !ifscCode ||
+            ifscCode.trim() === "")
         ) {
           return next(
             errorHandler(
@@ -245,17 +246,28 @@ const signUpController = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(userData.password, 12);
     userData.password = hashedPassword;
 
+    const token = crypto.randomBytes(32).toString("hex");
+    userData.emailVerificationToken = token;
+    userData.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+    userData.isVerified = false;
+
     const newUser = await Model.create(userData);
 
-    generateTokenAndCookie(res, newUser);
-
+    await sendVerificationEmail(
+      userData[emailField],
+      userData.name || userData.contactPersonName,
+      token,
+      role
+    );
+ 
     const { password: _ignored, ...userDetails } = newUser._doc;
 
     return res.status(201).json({
       success: true,
-      message: "User created successfully",
+      message: "Signup successful. Please verify your email to activate your account.",
       user: userDetails,
     });
+
   } catch (error) {
     return next(errorHandler(500, error.message));
   }
@@ -295,6 +307,10 @@ const signInController = async (req, res, next) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return next(errorHandler(401, "Invalid credentials"));
+
+    if (!user.isVerified) {
+      return next(errorHandler(403, "Please verify your email before signing in"));
+    }
 
     token = generateTokenAndCookie(res, user);
 

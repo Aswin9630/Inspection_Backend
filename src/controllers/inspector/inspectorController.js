@@ -260,6 +260,25 @@ const getInspectorHistory = async (req, res, next) => {
   }
 };
 
+const getWonBids = async (req, res, next) => {
+  try {
+    if (req.user.role !== "inspector") {
+      return res.status(403).json({ success: false, message: "Unauthorized access" });
+    }
+
+    const bids = await Bid.find({ inspector: req.user._id, status: "won" })
+      .populate({
+        path: "enquiry",
+        select: "location inspectionDate commodity volume contact status price platformFee createdAt",
+      })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, bids });
+  } catch (error) {
+    next(errorHandler(500, "Failed to fetch won bids: " + error.message));
+  }
+};
+
  
 module.exports = {
   getAvailableEnquiries,
@@ -268,5 +287,6 @@ module.exports = {
   getMyBids,
   getLowestBidsPerEnquiry,
   updateInspectorDocumentsController,
-  getInspectorHistory
+  getInspectorHistory,
+  getWonBids
 };

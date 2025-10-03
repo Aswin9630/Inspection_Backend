@@ -4,6 +4,7 @@ const { getUserProfileController,logoutController,signInController,signUpControl
 const {handleValidationErrors,signInValidation,signUpValidation} = require("../../middleware/validation");
 const verifyUser = require("../../middleware/verifyUser");
 const createUploader = require("../../middleware/upload");
+const verifyEmailController = require("../../controllers/authentication/verifyEmail");
 
 const customerUploader = createUploader("customers");
 const inspectorUploader = createUploader("inspectors");
@@ -45,4 +46,5 @@ router.post(
 router.post("/signin",signInValidation(),handleValidationErrors,signInController)
 router.post("/logout",handleValidationErrors,logoutController)
 router.get("/profile",verifyUser,getUserProfileController)
+router.get("/verify-email", verifyEmailController);
 module.exports = router

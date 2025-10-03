@@ -61,14 +61,10 @@ const customerSchema = new mongoose.Schema(
           return this.publishRequirements;
         },
       },
-      isVerified: {
-        type: Boolean,
-        default: false,
-      },
-      emailVerificationToken: {
-        type: String,
-      },
     },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationExpires: { type: Date },
 
     resetPasswordToken: String,
     resetPasswordExpire: Date,

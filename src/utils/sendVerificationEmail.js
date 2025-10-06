@@ -9,7 +9,7 @@ const nodemailer = require("nodemailer");
 });
 
 const sendVerificationEmail = async (email, name, token, role) => {
-  const link = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}&role=${role}`;
+  const link = `${process.env.FRONTEND_PROD_URL}/auth/verify-email?token=${token}&role=${role}`;
 
   await transporter.sendMail({
     from: `"Qualty.ai" <${process.env.EMAIL_USER}>`,

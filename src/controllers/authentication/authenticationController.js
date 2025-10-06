@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const sendVerificationEmail = require("../../utils/sendVerificationEmail");
+const {sendVerificationEmail} = require("../../utils/sendVerificationEmail");
 const Customer = require("../../models/Customer/customerModel");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");

@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 
-export const transporter = nodemailer.createTransport({
+ const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
     user: process.env.EMAIL_USER,
@@ -25,4 +25,4 @@ const sendVerificationEmail = async (email, name, token, role) => {
 
 };
 
-module.exports = sendVerificationEmail;
+module.exports = {transporter, sendVerificationEmail};

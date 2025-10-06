@@ -3,6 +3,8 @@ const Payment = require("../../models/Payment/paymentModel");
 const Customer = require("../../models/Customer/customerModel");
 const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
+const sendEnquiryNotification = require("../../utils/EmailServices/sendEnquiryNotification");
+const sendCustomerEnquiryConfirmation = require("../../utils/EmailServices/sendCustomerEnquiryConfirmation");
 
 const raiseEnquiryController = async (req, res, next) => {
   try {
@@ -92,6 +94,8 @@ const raiseEnquiryController = async (req, res, next) => {
     const { platformFee: _platformFee, ...sanitizedEnquiry } =
       newEnquiry.toObject();
 
+     await sendEnquiryNotification(customer, sanitizedEnquiry);
+     await sendCustomerEnquiryConfirmation(customer, sanitizedEnquiry);
     res.status(201).json({
       success: true,
       message: "Inspection enquiry raised successfully",

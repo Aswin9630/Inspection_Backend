@@ -30,6 +30,6 @@ router.patch(
   updateInspectorDocumentsController
 );
 router.get("/won-bids", verifyUser, getWonBids);
- 
+
 
 module.exports = router;

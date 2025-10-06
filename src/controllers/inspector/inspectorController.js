@@ -248,7 +248,6 @@ const updateInspectorDocumentsController = async (req, res, next) => {
   }
 };
 
-
 const getInspectorHistory = async (req, res, next) => {
   try {
     const inspectorId = req.user._id;

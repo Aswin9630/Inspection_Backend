@@ -13,7 +13,7 @@ const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorL
 
 const PORT = process.env.PORT || 3000;
 const app = express();
- 
+  
 app.use(cors({
   origin:process.env.FRONTEND_URL,
   methods:["GET","POST","PATCH","PUT","DELETE"],

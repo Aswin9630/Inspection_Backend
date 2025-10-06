@@ -1,27 +1,50 @@
 const { transporter } = require("../sendVerificationEmail"); 
 
 const sendEnquiryNotification = async (customer, enquiry) => {
-  const htmlContent = `
-    <h2>New Inspection Enquiry Raised</h2>
-    <p><strong>Customer:</strong> ${customer.name} (${customer.email})</p>
-    <p><strong>Mobile:</strong> ${customer.mobileNumber}</p>
-    <p><strong>Budget:</strong> ₹${enquiry.inspectionBudget}</p>
-    <p><strong>Inspection Types:</strong> 
-      ${enquiry.inspectionTypes.physical ? "Physical " : ""}
-      ${enquiry.inspectionTypes.chemical ? "Chemical" : ""}
-    </p>
-    <p><strong>Address:</strong> ${customer.address}</p>
-    <p><strong>Raised At:</strong> ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
-    <hr />
-    <p><strong>Enquiry Details:</strong></p>
-    <pre>${JSON.stringify(enquiry, null, 2)}</pre>
+  const {
+    inspectionLocation,
+    country,
+    urgencyLevel,
+    commodityCategory,
+    subCommodity,
+    volume,
+    inspectionBudget,
+    inspectionDate,
+  } = enquiry;
+
+  const formattedFromDate = new Date(inspectionDate.from).toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+
+  const formattedToDate = new Date(inspectionDate.to).toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric"
+  });
+
+  const plainText = `
+📢 New Inspection Enquiry Raised
+
+👤 Customer: ${customer.name}
+📧 Email: ${customer.email}
+📱 Mobile: ${customer.mobileNumber}
+
+📍 Location: ${inspectionLocation}, ${country}
+📦 Commodity: ${commodityCategory} - ${subCommodity}
+📊 Volume: ${volume} units
+⚡ Urgency Level: ${urgencyLevel}
+💰 Budget: ₹${inspectionBudget}
+📅 Inspection Window: ${formattedFromDate} to ${formattedToDate}
+
+✅ Status: Draft
+🕒 Raised At: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+
+Please log in to the admin dashboard to review and assign inspectors.
   `;
 
   await transporter.sendMail({
     from: `"Qualty.ai" <${process.env.EMAIL_USER}>`,
     to: process.env.EMAIL_USER,
     subject: "New Inspection Enquiry Raised",
-    html: htmlContent,
+    text: plainText,
   });
 };
 

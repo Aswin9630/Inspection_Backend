@@ -13,7 +13,7 @@ const raiseEnquiryController = async (req, res, next) => {
     }
 
     const customer = await Customer.findById(req.user._id).select(
-      "publishRequirements documents"
+      "name email mobileNumber publishRequirements documents"
     );
 
     if (!customer) {

@@ -8,7 +8,11 @@ const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
 const {
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
-const QuickServiceRequest = require("../../models/QuickService/quickServicesModel")
+const QuickServiceRequest = require("../../models/QuickService/quickServicesModel");
+const sendCustomerPaymentConfirmation = require("../../utils/EmailServices/sendCustomerPaymentConfirmation");
+const sendTeamPaymentNotification = require("../../utils/EmailServices/sendTeamPaymentNotification");
+const sendQuickServiceCustomerConfirmation = require("../../utils/EmailServices/sendQuickServiceCustomerConfirmation");
+const sendQuickServiceTeamNotification = require("../../utils/EmailServices/sendQuickServiceTeamNotification");
 
 const createOrderForEnquiry = async (req, res, next) => {
   try {
@@ -39,7 +43,7 @@ const createOrderForEnquiry = async (req, res, next) => {
     if (!customer) {
       return next(errorHandler(404, "Customer profile not found"));
     }
-
+    
     const amountInPaise = amount * 100;
 
     const razorpayOrder = await razorpayInstance.orders.create({
@@ -168,10 +172,18 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
       razorpaySignature,
       bidId,
     } = req.body;
-    
-    if (!paymentId || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature || !bidId) {
-  return next(errorHandler(400, "Missing required payment verification fields"));
-}
+
+    if (
+      !paymentId ||
+      !razorpayPaymentId ||
+      !razorpayOrderId ||
+      !razorpaySignature ||
+      !bidId
+    ) {
+      return next(
+        errorHandler(400, "Missing required payment verification fields")
+      );
+    }
 
     const generatedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -197,7 +209,9 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
     payment.paymentMode = "razorpay";
     await payment.save();
 
-    const bid = await Bid.findById(bidId).populate("enquiry");
+    const bid = await Bid.findById(bidId).populate(
+      "enquiry inspector customer"
+    );
     if (!bid || bid.status !== "active") {
       return res.status(404).json({
         success: false,
@@ -205,13 +219,11 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
       });
     }
     if (bid.status === "won") {
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message: "Bid already confirmed",
-          bidId: bid._id,
-        });
+      return res.status(200).json({
+        success: true,
+        message: "Bid already confirmed",
+        bidId: bid._id,
+      });
     }
 
     bid.status = "won";
@@ -226,6 +238,9 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
     bid.enquiry.status = "completed";
     await bid.enquiry.save();
 
+    await sendCustomerPaymentConfirmation(bid.customer, bid, payment);
+    await sendTeamPaymentNotification(bid.customer, bid, payment);
+
     res.status(200).json({
       success: true,
       message: "Payment verified and bid confirmed",
@@ -238,15 +253,18 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
 
 const verifyQuickServicePayment = async (req, res, next) => {
   try {
-    const {
-      paymentId,
-      razorpayPaymentId,
-      razorpayOrderId,
-      razorpaySignature,
-    } = req.body;
+    const { paymentId, razorpayPaymentId, razorpayOrderId, razorpaySignature } =
+      req.body;
 
-    if (!paymentId || !razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
-      return next(errorHandler(400, "Missing required payment verification fields"));
+    if (
+      !paymentId ||
+      !razorpayPaymentId ||
+      !razorpayOrderId ||
+      !razorpaySignature
+    ) {
+      return next(
+        errorHandler(400, "Missing required payment verification fields")
+      );
     }
 
     const generatedSignature = crypto
@@ -285,20 +303,32 @@ const verifyQuickServicePayment = async (req, res, next) => {
     quickRequest.status = "paid";
     await quickRequest.save();
 
+    await sendQuickServiceCustomerConfirmation(
+      quickRequest.customer,
+      quickRequest,
+      payment
+    );
+    await sendQuickServiceTeamNotification(
+      quickRequest.customer,
+      quickRequest,
+      payment
+    );
+
     return res.status(200).json({
       success: true,
       message: "Quick service payment verified",
       requestId: quickRequest._id,
     });
   } catch (error) {
-    next(errorHandler(500, "Quick service verification failed: " + error.message));
+    next(
+      errorHandler(500, "Quick service verification failed: " + error.message)
+    );
   }
 };
-
 
 module.exports = {
   createOrderForEnquiry,
   webHooksController,
   verifyPaymentAndConfirmBid,
-  verifyQuickServicePayment
+  verifyQuickServicePayment,
 };

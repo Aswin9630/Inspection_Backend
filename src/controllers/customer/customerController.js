@@ -68,7 +68,11 @@ const raiseEnquiryController = async (req, res, next) => {
       );
     }
 
-    const customerBudget = rest.inspectionBudget;
+    const customerBudget = Number(rest.inspectionBudget) || 0;
+    if (customerBudget <= 0) {
+  return next(errorHandler(400, "Inspection budget must be greater than zero"));
+}
+
     const platformFee = Math.round(customerBudget * 0.3);
 
     const enquiryData = {
@@ -79,6 +83,12 @@ const raiseEnquiryController = async (req, res, next) => {
         chemical: inspectionTypes?.chemical || false,
       },
       platformFee,
+      paymentPhases: [
+        { phase: "initial", amount: Math.round(customerBudget * 0.3), status: "pending" },
+        { phase: "inspection", amount: Math.round(customerBudget * 0.2), status: "pending" },
+        { phase: "final", amount: Math.round(customerBudget * 0.5), status: "pending" },
+      ],
+      currentPhase: "initial",
     };
 
     if (inspectionTypes?.physical) {

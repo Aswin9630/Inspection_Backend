@@ -124,6 +124,17 @@ const inspectionEnquirySchema = new mongoose.Schema(
     selectionSummary: {
       type: String,
     },
+    paymentPhases: [
+  {
+    phase: { type: String, enum: ["initial", "inspection", "final"] },
+    amount: Number,
+    status: { type: String, enum: ["pending", "paid"], default: "pending" },
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
+  }
+],
+currentPhase: { type: String, enum: ["initial", "inspection", "final"], default: "initial" },
+
   },
   { timestamps: true }
 );

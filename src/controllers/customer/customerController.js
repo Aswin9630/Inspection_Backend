@@ -78,6 +78,11 @@ const raiseEnquiryController = async (req, res, next) => {
     const enquiryData = {
       ...rest,
       customer: req.user._id,
+       contact: {
+    name: customer.name,
+    email: customer.email,
+    phoneNumber: customer.mobileNumber,
+  },
       inspectionTypes: {
         physical: inspectionTypes?.physical || false,
         chemical: inspectionTypes?.chemical || false,
@@ -106,6 +111,7 @@ const raiseEnquiryController = async (req, res, next) => {
 
      await sendEnquiryNotification(customer, sanitizedEnquiry);
      await sendCustomerEnquiryConfirmation(customer, sanitizedEnquiry);
+
     res.status(201).json({
       success: true,
       message: "Inspection enquiry raised successfully",

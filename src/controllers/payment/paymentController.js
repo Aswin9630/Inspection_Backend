@@ -223,7 +223,7 @@ const verifyPaymentAndConfirmBid = async (req, res, next) => {
         success: true,
         message: "Bid already confirmed",
         bidId: bid._id,
-      });
+      }); 
     }
 
     bid.status = "won";

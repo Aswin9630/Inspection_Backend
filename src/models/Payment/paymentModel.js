@@ -10,6 +10,10 @@ const paymentSchema = new mongoose.Schema({
   razorpayOrderId: String,
   razorpayPaymentId: String,
   paymentMode: String, 
+   paidAt: Date,
+  receiptId: String,
 }, { timestamps: true });
+
+paymentSchema.index({ enquiry: 1, phase: 1 });
 
 module.exports = mongoose.model("Payment", paymentSchema);

@@ -3,6 +3,7 @@ dotenv.config();
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const http = require('http')
 const connectDB = require("./config/database")
 const authRoutes = require("./routes/authentication/authRouter")
 const customerRoutes = require("./routes/customer/customerRouter")
@@ -10,6 +11,7 @@ const inspectorRoutes = require("./routes/inspector/inspectorRouter")
 const paymentRoutes = require("./routes/payment/paymentRouter")
 const quickServicesRoutes = require("./routes/customer/quickServiceRouter")
 const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorLocationDetailsRouter");
+const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -33,11 +35,14 @@ app.use("/inspector", inspectorRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/quick-services",quickServicesRoutes)
 app.use("/admin/locations", adminLocationRoutes);
+
+const server = http.createServer(app)
+initializeSocket(server);
  
 const serverAndDBconnect = async () => {   
   try { 
     await connectDB();
-    app.listen(PORT, () => console.log("Server running on port:" + PORT));
+    server.listen(PORT, () => console.log("Server running on port:" + PORT));
   } catch (error) {
     console.error("Failed to connect to DB or server:", error.message);
     process.exit(1);

@@ -160,7 +160,11 @@ const getBidsForEnquiry = async (req, res, next) => {
       totalBids: bids.length,
     };
 
-    res.json({ success: true, bids, stats });
+    res.json({ success: true, bids, stats, enquiry: {
+    status: enquiry.status,
+    currentPhase: enquiry.currentPhase,
+    _id: enquiry._id,
+  }, });
   } catch (error) {
     next(errorHandler(500, "Failed to fetch bids: " + error.message));
   }
@@ -354,6 +358,46 @@ const getCustomerAnalysis = async (req, res, next) => {
   }
 };
 
+const getWonInspectors = async (req, res, next) => {
+  try {
+    const customerId = req.user._id;
+
+    const wonBids = await Bid.find({ status: "won" })
+      .populate({
+        path: "enquiry",
+        match: { customer: customerId },
+        select: "commodityCategory",
+      })
+      .populate("inspector", "name email mobileNumber");
+
+    const validBids = wonBids.filter((bid) => bid.enquiry);
+
+    const seen = new Set();
+    const inspectors = [];
+
+    validBids.forEach((bid) => {
+      const inspector = bid.inspector;
+      if (inspector && !seen.has(inspector._id.toString())) {
+        seen.add(inspector._id.toString());
+        inspectors.push({
+          id: inspector._id,
+          name: inspector.name,
+          email: inspector.email,
+          mobileNumber: inspector.mobileNumber,
+          commodity: bid.enquiry.commodityCategory,
+        });
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      inspectors,
+    });
+  } catch (error) {
+    next({ status: 500, message: "Failed to fetch inspectors: " + error.message });
+  }
+};
+
 module.exports = {
   raiseEnquiryController,
   getMyEnquiries,
@@ -363,5 +407,6 @@ module.exports = {
   updateCustomerDocumentsController,
   getEnquiryDetails,
   getCustomerPayments,
-  getCustomerAnalysis
+  getCustomerAnalysis,
+  getWonInspectors
 };

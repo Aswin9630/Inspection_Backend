@@ -13,20 +13,34 @@ const getAvailableEnquiries = async (req, res, next) => {
       status: "draft",
     }).sort({ createdAt: -1 });
 
-   const adjustedEnquiries = await Promise.all(
-  enquiries.map(async (enquiry) => {
-    const bid = await Bid.findOne({ enquiry: enquiry._id, inspector: req.user._id });
-    const { platformFee: _, ...sanitized } = enquiry.toObject();
-    const inspectorViewAmount = enquiry.inspectionBudget - enquiry.platformFee;
+    const adjustedEnquiries = await Promise.all(
+      enquiries.map(async (enquiry) => {
+        if (enquiry.inspectionBudget < process.env.MINIMUM_BUDGET) {
+          return next(
+            errorHandler(
+              400,
+              "Please raise an enquiry with at least ₹1 budget."
+            )
+          );
+        }
+        const bid = await Bid.findOne({
+          enquiry: enquiry._id,
+          inspector: req.user._id,
+        });
+        const platformFee = parseFloat(
+          (enquiry.inspectionBudget * 0.3).toFixed(2)
+        );
+        const inspectorViewAmount = enquiry.inspectionBudget - platformFee;
+        const { platformFee: _, ...sanitized } = enquiry.toObject();
 
-    return {
-      ...sanitized,
-      inspectionBudget: inspectorViewAmount,
-      hasPlacedBid: !!bid,
-    };
-  })
-);
- 
+        return {
+          ...sanitized,
+          inspectionBudget: inspectorViewAmount,
+          hasPlacedBid: !!bid,
+        };
+      })
+    );
+
     res.json({ success: true, enquiries: adjustedEnquiries });
   } catch (error) {
     next(errorHandler(500, "Failed to fetch enquiries: " + error.message));
@@ -34,41 +48,33 @@ const getAvailableEnquiries = async (req, res, next) => {
 };
 
 const placeBid = async (req, res, next) => {
-    try {
-      if (req.user.role !== "inspector") {
-        return next(errorHandler(403, "Only inspectors can bid"));
-      }
+  try {
+    if (req.user.role !== "inspector") {
+      return next(errorHandler(403, "Only inspectors can bid"));
+    }
 
-      const inspector = await Inspector.findById(req.user._id).select(
-        "acceptsRequests identityDocuments billingDetails"
-      );
+    const inspector = await Inspector.findById(req.user._id).select(
+      "acceptsRequests identityDocuments billingDetails"
+    );
 
-      if (!inspector) {
-        return next(errorHandler(404, "Inspector not found"));
-      }
+    if (!inspector) {
+      return next(errorHandler(404, "Inspector not found"));
+    }
 
-      if (inspector.acceptsRequests) {
-        const { aadhaarCard } = inspector.identityDocuments || {};
-        const { accountNumber, bankName, ifscCode } =
-          inspector.billingDetails || {};
+    if (inspector.acceptsRequests) {
+      const { aadhaarCard } = inspector.identityDocuments || {};
+      const { accountNumber, bankName, ifscCode } =
+        inspector.billingDetails || {};
 
-        const isMissing = (val) =>
-          !val || typeof val !== "string" || val.trim().length === 0;
+      const isMissing = (val) =>
+        !val || typeof val !== "string" || val.trim().length === 0;
 
-        if (
-          isMissing(aadhaarCard) ||
-          isMissing(accountNumber) ||
-          isMissing(bankName) ||
-          isMissing(ifscCode)
-        ) {
-          return next(
-            errorHandler(
-              403,
-              "You must submit Aadhaar and complete banking details before placing a bid"
-            )
-          );
-        }
-      } else {
+      if (
+        isMissing(aadhaarCard) ||
+        isMissing(accountNumber) ||
+        isMissing(bankName) ||
+        isMissing(ifscCode)
+      ) {
         return next(
           errorHandler(
             403,
@@ -76,64 +82,62 @@ const placeBid = async (req, res, next) => {
           )
         );
       }
+    } else {
+      return next(
+        errorHandler(
+          403,
+          "You must submit Aadhaar and complete banking details before placing a bid"
+        )
+      );
+    }
 
-      const { enquiryId } = req.params;
-      const { amount, note } = req.body;
+    const { enquiryId } = req.params;
+    const { amount, note } = req.body;
 
-      const enquiry = await InspectionEnquiry.findById(enquiryId);
-      if (!enquiry || enquiry.status !== "draft") {
-        return next(errorHandler(404, "Enquiry not available for bidding"));
-      }
+    const enquiry = await InspectionEnquiry.findById(enquiryId);
+    if (!enquiry || enquiry.status !== "draft") {
+      return next(errorHandler(404, "Enquiry not available for bidding"));
+    }
 
-       const existingBid = await Bid.findOne({
+    const existingBid = await Bid.findOne({
       enquiry: enquiryId,
       inspector: req.user._id,
     });
 
     if (existingBid) {
-      return next(errorHandler(400, "You have already placed a bid for this enquiry"));
-    }
-
-      const platformFee = enquiry.platformFee;
-      const customerViewAmount = amount + platformFee;
-
-      let bid = await Bid.findOne({
-        enquiry: enquiryId,
-        inspector: req.user._id,
-      });
-
-      if (bid) {
-        bid.amount = amount;
-        bid.note = note;
-        bid.customerViewAmount = customerViewAmount;
-        await bid.save();
-      } else {
-        bid = await Bid.create({
-          enquiry: enquiryId,
-          inspector: req.user._id,
-          amount,
-          note,
-          customerViewAmount,
-        });
-      }
-
-      const populatedBid = await Bid.findById(bid._id).populate(
-        "inspector",
-        "name email mobileNumber commodities inspectorType"
+      return next(
+        errorHandler(400, "You have already placed a bid for this enquiry")
       );
-
-      res.status(200).json({
-        success: true,
-        message: "Bid placed successfully",
-        bid: {
-          amount: populatedBid.amount,
-          inspector: populatedBid.inspector,
-          enquiry: enquiryId,
-        }, 
-      });
-    } catch (error) {
-      next(errorHandler(500, "Failed to place bid: " + error.message));
     }
+
+    const platformFee = enquiry.platformFee;
+    const customerViewAmount = amount + platformFee;
+
+    const bid = await Bid.create({
+      enquiry: enquiryId,
+      inspector: req.user._id,
+      amount,
+      note,
+      customerViewAmount,
+    });
+
+    const populatedBid = await Bid.findById(bid._id).populate(
+      "inspector",
+      "name email mobileNumber commodities inspectorType"
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Bid placed successfully",
+      bid: {
+        amount: populatedBid.amount,
+        inspector: populatedBid.inspector,
+        enquiry: enquiryId, 
+      },
+    });
+  } catch (error) {
+    next(errorHandler(500, "Failed to place bid: " + error.message));
+  }
 };
 
 const cancelBid = async (req, res, next) => {
@@ -234,10 +238,16 @@ const updateInspectorDocumentsController = async (req, res, next) => {
     // Fetch current inspector to check completeness
     const inspector = await Inspector.findById(req.user._id).lean();
 
-    const hasAadhaar = updates["identityDocuments.aadhaarCard"] || inspector?.identityDocuments?.aadhaarCard;
-    const hasAccount = updates["billingDetails.accountNumber"] || inspector?.billingDetails?.accountNumber;
-    const hasBank = updates["billingDetails.bankName"] || inspector?.billingDetails?.bankName;
-    const hasIFSC = updates["billingDetails.ifscCode"] || inspector?.billingDetails?.ifscCode;
+    const hasAadhaar =
+      updates["identityDocuments.aadhaarCard"] ||
+      inspector?.identityDocuments?.aadhaarCard;
+    const hasAccount =
+      updates["billingDetails.accountNumber"] ||
+      inspector?.billingDetails?.accountNumber;
+    const hasBank =
+      updates["billingDetails.bankName"] || inspector?.billingDetails?.bankName;
+    const hasIFSC =
+      updates["billingDetails.ifscCode"] || inspector?.billingDetails?.ifscCode;
 
     const isComplete = hasAadhaar && hasAccount && hasBank && hasIFSC;
 
@@ -264,7 +274,9 @@ const updateInspectorDocumentsController = async (req, res, next) => {
 const getInspectorHistory = async (req, res, next) => {
   try {
     const inspectorId = req.user._id;
-    const bids = await Bid.find({ inspector: inspectorId }).populate("enquiry").sort({ createdAt: -1 });
+    const bids = await Bid.find({ inspector: inspectorId })
+      .populate("enquiry")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, bids });
   } catch (err) {
@@ -275,13 +287,16 @@ const getInspectorHistory = async (req, res, next) => {
 const getWonBids = async (req, res, next) => {
   try {
     if (req.user.role !== "inspector") {
-      return res.status(403).json({ success: false, message: "Unauthorized access" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized access" });
     }
 
     const bids = await Bid.find({ inspector: req.user._id, status: "won" })
       .populate({
         path: "enquiry",
-        select: "location inspectionDate commodity volume contact status price platformFee createdAt",
+        select:
+          "location inspectionDate commodity volume contact status price platformFee createdAt",
       })
       .sort({ createdAt: -1 });
 
@@ -305,19 +320,25 @@ const getInspectorAnalytics = async (req, res, next) => {
     }
 
     // 2. All Bids
-    const allBids = await Bid.find({ inspector: inspectorId }).populate("enquiry").sort({ createdAt: -1 });
+    const allBids = await Bid.find({ inspector: inspectorId })
+      .populate("enquiry")
+      .sort({ createdAt: -1 });
 
     // 3. Won Bids
     const wonBids = allBids.filter((bid) => bid.status === "won");
 
     // 4. Total Earnings (sum of won bid amounts)
-    const totalEarnings = wonBids.reduce((sum, bid) => sum + (bid.amount || 0), 0);
+    const totalEarnings = wonBids.reduce(
+      (sum, bid) => sum + (bid.amount || 0),
+      0
+    );
 
     // 5. Total Bids Placed
     const totalBids = allBids.length;
 
     // 6. Win Rate
-    const winRate = totalBids > 0 ? ((wonBids.length / totalBids) * 100).toFixed(2) : "0.00";
+    const winRate =
+      totalBids > 0 ? ((wonBids.length / totalBids) * 100).toFixed(2) : "0.00";
 
     // 7. Recent Activity (last 5 bids)
     const recentBids = allBids.slice(0, 5);
@@ -334,12 +355,14 @@ const getInspectorAnalytics = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(errorHandler(500, "Failed to fetch inspector analytics: " + error.message));
+    next(
+      errorHandler(500, "Failed to fetch inspector analytics: " + error.message)
+    );
   }
 };
 
 
- 
+
 module.exports = {
   getAvailableEnquiries,
   placeBid,
@@ -349,5 +372,6 @@ module.exports = {
   updateInspectorDocumentsController,
   getInspectorHistory,
   getWonBids,
-  getInspectorAnalytics
+  getInspectorAnalytics,
+  
 };

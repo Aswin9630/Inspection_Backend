@@ -10,7 +10,7 @@ const {
   updateInspectorDocumentsController,
   getInspectorHistory,
   getWonBids,
-  getInspectorAnalytics
+  getInspectorAnalytics,
 } = require("../../controllers/inspector/inspectorController");
 const verifyUser = require("../../middleware/verifyUser");
 

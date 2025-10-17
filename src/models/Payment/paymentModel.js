@@ -6,11 +6,11 @@ const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   currency: { type: String, default: "INR" },
   status: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
-  phase: { type: String, enum: ["initial", "mid", "final"], default: "initial" },
+  phase: { type: String, enum: ["initial", "final"], required: true },
   razorpayOrderId: String,
   razorpayPaymentId: String,
-  paymentMode: String, 
-   paidAt: Date,
+  paymentMode: String,
+  paidAt: Date,
   receiptId: String,
 }, { timestamps: true });
 

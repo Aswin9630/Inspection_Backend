@@ -11,6 +11,7 @@ const inspectorRoutes = require("./routes/inspector/inspectorRouter")
 const paymentRoutes = require("./routes/payment/paymentRouter")
 const quickServicesRoutes = require("./routes/customer/quickServiceRouter")
 const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorLocationDetailsRouter");
+const chatRoutes = require("./routes/Chat/chatRouter");
 const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
@@ -26,13 +27,14 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser()); 
 
-app.get("/test",(req,res)=>{
+app.get("/test",(req,res)=>{ 
   res.json({message:"Testing API"}) 
 })
 app.use("/auth",authRoutes);
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes);
 app.use("/payment", paymentRoutes);
+app.use("/chat", chatRoutes);
 app.use("/quick-services",quickServicesRoutes)
 app.use("/admin/locations", adminLocationRoutes);
 

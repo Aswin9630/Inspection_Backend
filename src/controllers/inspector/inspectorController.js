@@ -2,6 +2,8 @@ const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
+const Customer = require("../../models/Customer/customerModel");
+const Payment = require("../../models/Payment/paymentModel");
 
 const getAvailableEnquiries = async (req, res, next) => {
   try {
@@ -46,7 +48,7 @@ const getAvailableEnquiries = async (req, res, next) => {
     next(errorHandler(500, "Failed to fetch enquiries: " + error.message));
   }
 };
-
+  
 const placeBid = async (req, res, next) => {
   try {
     if (req.user.role !== "inspector") {
@@ -361,6 +363,47 @@ const getInspectorAnalytics = async (req, res, next) => {
   }
 };
 
+const getConfirmedCustomersForInspector = async (req, res, next) => {
+  try {
+    const inspectorId = req.user._id;
+
+    const wonBids = await Bid.find({ inspector: inspectorId, status: "won" })
+      .populate({
+        path: "enquiry",
+        select: "customer commodityCategory",
+      });
+
+    const validBids = wonBids.filter((bid) => bid.enquiry?.customer);
+
+    const customers = [];
+
+    for (const bid of validBids) {
+      const enquiry = bid.enquiry;
+      const customer = await Customer.findById(enquiry.customer).select("name email mobileNumber");
+
+      const initialPayment = await Payment.findOne({
+        enquiry: enquiry._id,
+        phase: "initial",
+        status: "paid",
+      });
+
+      if (customer) {
+        customers.push({
+          id: customer._id,
+          name: customer.name,
+          email: customer.email,
+          mobileNumber: customer.mobileNumber,
+          commodity: enquiry.commodityCategory,
+          orderId: initialPayment?.razorpayOrderId || "Not available",
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, customers });
+  } catch (error) {
+    next({ status: 500, message: "Failed to fetch customers: " + error.message });
+  }
+};
 
 
 module.exports = {
@@ -373,5 +416,6 @@ module.exports = {
   getInspectorHistory,
   getWonBids,
   getInspectorAnalytics,
+  getConfirmedCustomersForInspector
   
 };

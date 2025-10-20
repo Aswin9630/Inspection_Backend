@@ -11,6 +11,7 @@ const {
   getInspectorHistory,
   getWonBids,
   getInspectorAnalytics,
+  getConfirmedCustomersForInspector,
 } = require("../../controllers/inspector/inspectorController");
 const verifyUser = require("../../middleware/verifyUser");
 
@@ -32,6 +33,7 @@ router.patch(
 );
 router.get("/won-bids", verifyUser, getWonBids);
 router.get("/analysis", verifyUser, getInspectorAnalytics);
+router.get("/confirmed-customers", verifyUser, getConfirmedCustomersForInspector);
 
 
 module.exports = router;

@@ -372,22 +372,30 @@ const getWonInspectors = async (req, res, next) => {
 
     const validBids = wonBids.filter((bid) => bid.enquiry);
 
-    const seen = new Set();
     const inspectors = [];
 
-    validBids.forEach((bid) => {
+    for (const bid of validBids) {
       const inspector = bid.inspector;
-      if (inspector && !seen.has(inspector._id.toString())) {
-        seen.add(inspector._id.toString());
+      const enquiry = bid.enquiry;
+
+      if (inspector && enquiry) {
+        const initialPayment = await Payment.findOne({
+          enquiry: enquiry._id,
+          phase: "initial",
+          status: "paid",
+        });
+
         inspectors.push({
           id: inspector._id,
           name: inspector.name,
           email: inspector.email,
           mobileNumber: inspector.mobileNumber,
-          commodity: bid.enquiry.commodityCategory,
+          commodity: enquiry.commodityCategory,
+          orderId: initialPayment?.razorpayOrderId || "Not available",
+          amount: initialPayment?.amount || 0,
         });
       }
-    });
+    }
 
     res.status(200).json({
       success: true,
@@ -397,6 +405,8 @@ const getWonInspectors = async (req, res, next) => {
     next({ status: 500, message: "Failed to fetch inspectors: " + error.message });
   }
 };
+
+
 
 module.exports = {
   raiseEnquiryController,

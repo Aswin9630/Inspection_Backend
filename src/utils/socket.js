@@ -4,8 +4,11 @@ const { ChatRoom, Message } = require("../models/Chat/ChatModel");
 const initializeSocket = (server) => {
   const io = socket(server, {
     cors: {
-      origin: process.env.FRONTEND_URL,
+       origin: process.env.NODE_ENV === "development" ? process.env.FRONTEND_URL : process.env.FRONTEND_PROD_URL
     },
+      path: "/socket.io",
+    transports: ["websocket", "polling"],
+    withCredentials:true
   });
 
   io.on("connection", (socket) => {

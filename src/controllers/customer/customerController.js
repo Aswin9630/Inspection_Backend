@@ -406,6 +406,38 @@ const getWonInspectors = async (req, res, next) => {
   }
 };
 
+const getDashboardStats = async (req, res) => {
+  try {
+    const customerId = req.user._id;
+
+    const totalInspections = await InspectionEnquiry.countDocuments({ customer: customerId });
+    const activeOrders = await InspectionEnquiry.countDocuments({ customer: customerId,  status: { $ne: "completed" }, });
+    const completedTasks = await InspectionEnquiry.countDocuments({ customer: customerId, status: "completed" });
+
+    const totalValueAgg = await Payment.aggregate([
+      { $match: { customer: customerId, status: "paid" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+    const totalValue = totalValueAgg[0]?.total || 0;
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalInspections,
+        activeOrders,
+        completedTasks,
+        totalValue,
+        growthRate: "+8%", 
+        urgentRequests: 0,  
+        successRate: "98.5%", 
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
 
 
 module.exports = {
@@ -418,5 +450,6 @@ module.exports = {
   getEnquiryDetails,
   getCustomerPayments,
   getCustomerAnalysis,
-  getWonInspectors
+  getWonInspectors,
+  getDashboardStats
 };

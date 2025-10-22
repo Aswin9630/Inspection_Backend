@@ -4,7 +4,8 @@ const { ChatRoom, Message } = require("../models/Chat/ChatModel");
 const initializeSocket = (server) => {
   const io = socket(server, {
     cors: {
-       origin: process.env.NODE_ENV === "development" ? process.env.FRONTEND_URL : process.env.FRONTEND_PROD_URL
+       origin: process.env.NODE_ENV === "development" ? process.env.FRONTEND_URL : process.env.FRONTEND_PROD_URL,
+      methods: ["GET", "POST"],
     },
       path: "/socket.io",
     transports: ["websocket", "polling"],

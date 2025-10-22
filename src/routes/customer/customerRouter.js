@@ -11,7 +11,8 @@ const {
   updateCustomerDocumentsController,
   getEnquiryDetails,
   getCustomerPayments,
-  getCustomerAnalysis,getWonInspectors
+  getCustomerAnalysis,getWonInspectors,
+  getDashboardStats
 } = require("../../controllers/customer/customerController");
 
 const customerUploader = createUploader("customers");
@@ -34,5 +35,6 @@ router.patch(
   updateCustomerDocumentsController
 );
 router.get("/won-inspections", verifyUser, getWonInspectors);
+router.get("/dashboardStatus", verifyUser, getDashboardStats);
 
 module.exports = router;

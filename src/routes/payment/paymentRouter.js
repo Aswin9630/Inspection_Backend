@@ -10,5 +10,4 @@ router.post("/verify", verifyUser, verifyInitialPaymentAndConfirmBid);
 router.post("/verifyFinal", verifyUser, verifyFinalPaymentAndCompleteEnquiry);
 router.post("/verifyQuickService", verifyUser, verifyQuickServicePayment);
 
-
 module.exports = router;

@@ -29,7 +29,7 @@ app.use(cookieParser());
 
 app.get("/test",(req,res)=>{ 
   res.json({message:"Testing API"}) 
-})
+});
 app.use("/auth",authRoutes);
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes);

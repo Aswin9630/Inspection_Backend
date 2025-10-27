@@ -35,8 +35,15 @@ const getAvailableEnquiries = async (req, res, next) => {
         const inspectorViewAmount = enquiry.inspectionBudget - platformFee;
         const { platformFee: _, ...sanitized } = enquiry.toObject();
 
+        const customerDoc = await Customer.findById(enquiry.customer).select("name email mobileNumber");
+const contact = {
+  name: enquiry.contact?.name || customerDoc?.name || "",
+  email: enquiry.contact?.email || customerDoc?.email || "",
+  phoneNumber: enquiry.contact?.phoneNumber || customerDoc?.mobileNumber || "",
+};
         return {
           ...sanitized,
+          contact,
           inspectionBudget: inspectorViewAmount,
           hasPlacedBid: !!bid,
         };
@@ -312,7 +319,6 @@ const getInspectorAnalytics = async (req, res, next) => {
   try {
     const inspectorId = req.user._id;
 
-    // 1. Inspector Profile
     const inspector = await Inspector.findById(inspectorId).select(
       "name email mobileNumber inspectorType commodities acceptsRequests identityDocuments billingDetails createdAt"
     );
@@ -321,28 +327,22 @@ const getInspectorAnalytics = async (req, res, next) => {
       return next(errorHandler(404, "Inspector not found"));
     }
 
-    // 2. All Bids
     const allBids = await Bid.find({ inspector: inspectorId })
       .populate("enquiry")
       .sort({ createdAt: -1 });
 
-    // 3. Won Bids
     const wonBids = allBids.filter((bid) => bid.status === "won");
 
-    // 4. Total Earnings (sum of won bid amounts)
     const totalEarnings = wonBids.reduce(
       (sum, bid) => sum + (bid.amount || 0),
       0
     );
 
-    // 5. Total Bids Placed
     const totalBids = allBids.length;
 
-    // 6. Win Rate
     const winRate =
       totalBids > 0 ? ((wonBids.length / totalBids) * 100).toFixed(2) : "0.00";
 
-    // 7. Recent Activity (last 5 bids)
     const recentBids = allBids.slice(0, 5);
 
     res.status(200).json({

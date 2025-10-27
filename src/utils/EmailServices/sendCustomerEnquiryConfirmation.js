@@ -74,7 +74,7 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
       <hr style="border:none;border-top:1px solid #eee;margin:20px 0" />
       <div style="font-size:11px;color:#888">
         Qualty.ai | support@qualty.ai<br />
-        GSTIN: 29ABCDE1234F1Z5 | CIN: U12345KA2020PTC123456
+        GSTIN: 29AAMCP9070G1ZV | CIN: U51909KA2022PTC161277
       </div>
     </div>
   `;

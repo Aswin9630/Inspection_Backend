@@ -75,7 +75,7 @@ const sendTeamPaymentNotification = async (customer, bid, payment, opts = {}) =>
 
       <hr style="border:none;border-top:1px solid #eee;margin:20px 0" />
       <div style="font-size:11px;color:#888">
-        Qualty.ai Internal Notification • GSTIN: 29ABCDE1234F1Z5
+        Qualty.ai Internal Notification • GSTIN: 29AAMCP9070G1ZV
       </div>
     </div>
   `;

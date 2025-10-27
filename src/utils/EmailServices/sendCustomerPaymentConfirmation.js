@@ -46,7 +46,7 @@ const sendCustomerPaymentConfirmation = async (customer, bid, payment) => {
       <hr style="margin-top: 40px;" />
       <p style="font-size: 12px; color: #555;">
         Qualty.ai | support@qualty.ai<br />
-        GSTIN: 29ABCDE1234F1Z5 | CIN: U12345KA2020PTC123456
+        GSTIN: 29AAMCP9070G1ZV | CIN: U51909KA2022PTC161277
       </p>
     </div>
   `;
@@ -71,7 +71,7 @@ Payment ID: ${payment.razorpayPaymentId}
 Your inspection is now confirmed. Our team will coordinate with the inspector and keep you updated.
 
 Qualty.ai | support@qualty.ai
-GSTIN: 29ABCDE1234F1Z5 | CIN: U12345KA2020PTC123456
+GSTIN: 29AAMCP9070G1ZV | CIN: U51909KA2022PTC161277
   `;
 
   await transporter.sendMail({

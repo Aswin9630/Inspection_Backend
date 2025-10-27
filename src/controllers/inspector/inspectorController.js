@@ -37,7 +37,7 @@ const getAvailableEnquiries = async (req, res, next) => {
 
         const customerDoc = await Customer.findById(enquiry.customer).select("name email mobileNumber");
 const contact = {
-  name: enquiry.contact?.name || customerDoc?.name || "",
+  name: enquiry.contact?.name || customerDoc?.name || "", 
   email: enquiry.contact?.email || customerDoc?.email || "",
   phoneNumber: enquiry.contact?.phoneNumber || customerDoc?.mobileNumber || "",
 };

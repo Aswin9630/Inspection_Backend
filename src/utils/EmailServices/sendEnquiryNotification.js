@@ -1,22 +1,24 @@
-const { transporter } = require("../sendVerificationEmail"); 
+const { transporter } = require("../sendVerificationEmail");
 
 const sendEnquiryNotification = async (customer, enquiry) => {
   const {
-    inspectionLocation,
+    location,
     country,
-    urgencyLevel,
-    commodityCategory,
-    subCommodity,
+    urgency,
+    category,
+    subcategory,
+    commodity,
     volume,
     inspectionBudget,
-    inspectionDate,
+    dateFrom,
+    dateTo,
   } = enquiry;
 
-  const formattedFromDate = new Date(inspectionDate.from).toLocaleDateString("en-IN", {
+  const formattedFromDate = new Date(dateFrom).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric"
   });
 
-  const formattedToDate = new Date(inspectionDate.to).toLocaleDateString("en-IN", {
+  const formattedToDate = new Date(dateTo).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric"
   });
 
@@ -27,13 +29,13 @@ const sendEnquiryNotification = async (customer, enquiry) => {
 📧 Email: ${customer.email}
 📱 Mobile: ${customer.mobileNumber}
 
-📍 Location: ${inspectionLocation}, ${country}
-📦 Commodity: ${commodityCategory} - ${subCommodity}
+📍 Location: ${location}, ${country}
+📦 Commodity: ${category} - ${commodity}
 📊 Volume: ${volume} units
-⚡ Urgency Level: ${urgencyLevel}
+⚡ Urgency Level: ${urgency}
 💰 Budget: ₹${inspectionBudget}
 📅 Inspection Window: ${formattedFromDate} to ${formattedToDate}
-
+ 
 ✅ Status: Draft
 🕒 Raised At: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
 

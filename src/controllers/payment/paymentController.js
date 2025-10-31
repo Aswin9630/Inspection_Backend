@@ -4,7 +4,7 @@ const Customer = require("../../models/Customer/customerModel");
 const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
 const razorpayInstance = require("../../config/razorpay");
-const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
+const InspectionEnquiry = require("../../models/Customer/newCustomerEnquiryForm");
 const {
   validateWebhookSignature,
 } = require("razorpay/dist/utils/razorpay-utils");
@@ -35,7 +35,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       return next(errorHandler(404, "Enquiry not found or unauthorized"));
     }
 
-    if (enquiry.status !== "draft") {
+    if (enquiry.status !== "submitted") {
       return next(
         errorHandler(400, "Payment already initiated or enquiry submitted")
       );
@@ -92,7 +92,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -189,7 +189,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -310,7 +310,7 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(razorpayOrderId + "|" + razorpayPaymentId)
       .digest("hex");
 
@@ -372,15 +372,24 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     await bid.enquiry.save();
 
     const customer = bid.enquiry.customer;
+    console.log("customer",customer);
+    console.log("bid",bid);
+    console.log("payment",payment);
     if (customer) {
       await sendCustomerPaymentConfirmation(customer, bid, payment);
       await sendTeamPaymentNotification(customer, bid, payment);
     }
 
+    const confirmedBidAmount = bid.customerViewAmount;
+    const amountPaid = payment.amount;
+    const balanceAmount = Math.max(0, confirmedBidAmount - amountPaid);
+
     res.status(200).json({
       success: true,
       message: "Initial payment verified and bid confirmed",
       bidId: bid._id,
+      amountPaid,
+      balanceAmount,
     });
   } catch (error) {
     next(errorHandler(500, "Verification failed: " + error.message));
@@ -404,7 +413,7 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 
@@ -450,7 +459,7 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
       .populate("enquiry");
 
     const customer = await Customer.findById(enquiry.customer);
-    
+
     const paidPayments = await Payment.find({
       enquiry: enquiry._id,
       status: "paid",
@@ -459,6 +468,10 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
     const confirmedBidAmount =
       (bid && bid.customerViewAmount) || enquiry.inspectionBudget || 0;
     const remainingAfterFinal = Math.max(0, confirmedBidAmount - totalPaid);
+
+        console.log("customerFinal",customer);
+    console.log("bidFinal",bid);
+    console.log("paymentFinal",payment);
 
     if (customer) {
       await sendFinalPaymentConfirmation(customer, bid, payment, {
@@ -501,7 +514,7 @@ const verifyQuickServicePayment = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 

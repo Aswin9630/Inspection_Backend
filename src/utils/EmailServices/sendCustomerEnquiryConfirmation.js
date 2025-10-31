@@ -2,27 +2,29 @@ const { transporter } = require("../sendVerificationEmail");
 
 const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
   const {
-    inspectionLocation,
+    location,
     country,
-    urgencyLevel,
-    commodityCategory,
-    subCommodity,
+    urgency,
+    category,
+    subcategory,
+    commodity,
     volume,
     inspectionBudget,
-    inspectionDate,
+    dateFrom,
+    dateTo,
     _id,
   } = enquiry;
 
-  const formattedFromDate = new Date(inspectionDate.from).toLocaleDateString("en-IN", {
+  const formattedFromDate = new Date(dateFrom).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric",
   });
 
-  const formattedToDate = new Date(inspectionDate.to).toLocaleDateString("en-IN", {
+  const formattedToDate = new Date(dateTo).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric",
   });
 
   const formattedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-  const logoUrl ="https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
+  const logoUrl = "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111; background: #fff; padding: 24px; max-width: 720px; margin: auto; border: 1px solid #e6e6e6;">
@@ -41,10 +43,11 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
 
       <div style="margin-top:20px;font-size:13px;color:#444">
         <p><strong>Enquiry ID:</strong> ${_id}</p>
-        <p><strong>Location:</strong> ${inspectionLocation}, ${country}</p>
-        <p><strong>Commodity:</strong> ${commodityCategory}${subCommodity ? " — " + subCommodity : ""}</p>
+        <p><strong>Location:</strong> ${location}, ${country}</p>
+        <p><strong>Commodity:</strong> ${category}</p>
+        <p><strong>SubCategory:</strong>${subcategory ? subcategory : ""}${commodity ? " , " + commodity : ""}</p>
         <p><strong>Volume:</strong> ${volume} units</p>
-        <p><strong>Urgency Level:</strong> ${urgencyLevel}</p>
+        <p><strong>Urgency Level:</strong> ${urgency}</p>
         <p><strong>Inspection Window:</strong> ${formattedFromDate} to ${formattedToDate}</p>
       </div>
 
@@ -68,7 +71,7 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
 
       <div style="margin-top:22px;font-size:13px;color:#666">
         Our team will review your request and notify you once inspectors respond with quotes.
-        If you have any questions, reply to this email or contact support@qualty.ai.
+        If you have any queries, contact support@qualty.ai.
       </div>
 
       <hr style="border:none;border-top:1px solid #eee;margin:20px 0" />

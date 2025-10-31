@@ -5,6 +5,7 @@ const errorHandler= require("../../utils/errorHandler")
 const InspectorsList = require("../../models/QuickService/quickServiceModel")
 const QuickServiceRequest = require("../../models/QuickService/quickServicesModel")
 
+
 const getLocationList = async (req, res, next) => {
   try {
     const locations = await QuickServiceLocation.find().select("state location price");
@@ -106,7 +107,7 @@ const submitQuickServiceForm = async (req, res, next) => {
       order: razorpayOrder,
       requestId: quickRequest._id,
       paymentId: payment._id,
-       keyId: process.env.RAZORPAY_KEY_ID,
+       keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: req.user.name,
         email: req.user.email,
@@ -118,6 +119,7 @@ const submitQuickServiceForm = async (req, res, next) => {
     next(errorHandler(500, error.message));
   }
 };
+
 
 const getQuickServiceHistory = async (req, res, next) => {
   try {

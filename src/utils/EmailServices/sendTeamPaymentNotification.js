@@ -30,7 +30,7 @@ const sendTeamPaymentNotification = async (customer, bid, payment, opts = {}) =>
         <div style="flex:1">
           <div style="font-size:13px;color:#444;font-weight:700;margin-bottom:6px">Inspection</div>
           <div style="font-size:13px;color:#222">${bid?.enquiry?.commodityCategory || bid?.enquiry?.inspectionBudget || "N/A"}</div>
-          <div style="font-size:12px;color:#666">${bid?.enquiry?.inspectionLocation || "N/A"} • ${bid?.enquiry?.country || "N/A"}</div>
+          <div style="font-size:12px;color:#666">${bid?.enquiry?.location || "N/A"} • ${bid?.enquiry?.country || "N/A"}</div>
         </div>
       </div>
 

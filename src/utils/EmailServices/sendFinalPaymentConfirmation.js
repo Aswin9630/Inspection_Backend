@@ -4,10 +4,10 @@ const sendFinalPaymentConfirmation = async (customer, enquiry, payment, opts = {
   const formattedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   const logoUrl = "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
 
-  const inspectorName = enquiry?.confirmedBid?.inspector?.name ||" ";
-  const commodity = enquiry?.commodityCategory || "N/A";
-  const subCommodity = enquiry?.subCommodity || "";
-  const location = enquiry?.inspectionLocation || "N/A";
+  const inspectorName = enquiry?.inspector?.name ||" ";
+  const commodity = enquiry?.category || "N/A";
+  const subCommodity = enquiry?.commodity || "";
+  const location = enquiry?.location || "N/A";
   const country = enquiry?.country || "N/A";
 
   const paidAmount = payment.amount || 0;
@@ -32,7 +32,7 @@ const sendFinalPaymentConfirmation = async (customer, enquiry, payment, opts = {
       <div style="margin-top:20px;font-size:13px;color:#444">
         <p><strong>Enquiry ID:</strong> ${enquiry._id}</p>
         <p><strong>Location:</strong> ${location}, ${country}</p>
-        <p><strong>Commodity:</strong> ${commodity}${subCommodity ? " — " + subCommodity : ""}</p>
+        <p><strong>Category & commodity:</strong> ${commodity}${subCommodity ? " — " + subCommodity : ""}</p>
         <p><strong>Inspector:</strong> ${inspectorName}</p>
       </div>
 

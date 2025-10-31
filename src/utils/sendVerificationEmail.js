@@ -22,7 +22,6 @@ const sendVerificationEmail = async (email, name, token, role) => {
       <p>This link expires in 10 min.</p>
     `,
   });
-
 };
 
 module.exports = {transporter, sendVerificationEmail};

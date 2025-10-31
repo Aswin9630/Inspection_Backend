@@ -16,7 +16,7 @@ const sendCustomerPaymentConfirmation = async (customer, bid, payment) => {
       <p><strong>Phone:</strong> ${customer.mobileNumber}</p>
       <p><strong>Inspector Confirmed:</strong> ${bid.inspector.name}</p>
       <p><strong>Enquiry ID:</strong> ${bid.enquiry._id}</p>
-      <p><strong>Location:</strong> ${bid.enquiry.inspectionLocation}, ${bid.enquiry.country}</p>
+      <p><strong>Location:</strong> ${bid.enquiry.location}, ${bid.enquiry.country}</p>
       <p><strong>Time:</strong> ${formattedTime}</p>
 
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">

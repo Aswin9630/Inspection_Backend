@@ -1,4 +1,4 @@
-const InspectionEnquiry = require("../../models/Customer/customerEnquiryForm");
+const InspectionEnquiry = require("../../models/Customer/newCustomerEnquiryForm");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const Bid = require("../../models/Inspector/bidModel");
 const errorHandler = require("../../utils/errorHandler");
@@ -12,7 +12,7 @@ const getAvailableEnquiries = async (req, res, next) => {
     }
 
     const enquiries = await InspectionEnquiry.find({
-      status: "draft",
+      status: "submitted",
     }).sort({ createdAt: -1 });
 
     const adjustedEnquiries = await Promise.all(
@@ -35,12 +35,15 @@ const getAvailableEnquiries = async (req, res, next) => {
         const inspectorViewAmount = enquiry.inspectionBudget - platformFee;
         const { platformFee: _, ...sanitized } = enquiry.toObject();
 
-        const customerDoc = await Customer.findById(enquiry.customer).select("name email mobileNumber");
-const contact = {
-  name: enquiry.contact?.name || customerDoc?.name || "", 
-  email: enquiry.contact?.email || customerDoc?.email || "",
-  phoneNumber: enquiry.contact?.phoneNumber || customerDoc?.mobileNumber || "",
-};
+        const customerDoc = await Customer.findById(enquiry.customer).select(
+          "name email mobileNumber"
+        );
+        const contact = {
+          name:  customerDoc?.name || "",
+          email:  customerDoc?.email || "",
+          phoneNumber:
+             customerDoc?.mobileNumber || "",
+        };
         return {
           ...sanitized,
           contact,
@@ -55,7 +58,7 @@ const contact = {
     next(errorHandler(500, "Failed to fetch enquiries: " + error.message));
   }
 };
-  
+
 const placeBid = async (req, res, next) => {
   try {
     if (req.user.role !== "inspector") {
@@ -87,7 +90,7 @@ const placeBid = async (req, res, next) => {
         return next(
           errorHandler(
             403,
-            "You must submit Aadhaar and complete banking details before placing a bid"
+            "You must submit Aadhaar and complete banking details in your Account section before placing a bid"
           )
         );
       }
@@ -95,7 +98,7 @@ const placeBid = async (req, res, next) => {
       return next(
         errorHandler(
           403,
-          "You must submit Aadhaar and complete banking details before placing a bid"
+          "You must submit Aadhaar and complete banking details in your Account section before placing a bid"
         )
       );
     }
@@ -104,7 +107,7 @@ const placeBid = async (req, res, next) => {
     const { amount, note } = req.body;
 
     const enquiry = await InspectionEnquiry.findById(enquiryId);
-    if (!enquiry || enquiry.status !== "draft") {
+    if (!enquiry || enquiry.status !== "submitted") {
       return next(errorHandler(404, "Enquiry not available for bidding"));
     }
 
@@ -141,7 +144,7 @@ const placeBid = async (req, res, next) => {
       bid: {
         amount: populatedBid.amount,
         inspector: populatedBid.inspector,
-        enquiry: enquiryId, 
+        enquiry: enquiryId,
       },
     });
   } catch (error) {
@@ -361,17 +364,19 @@ const getInspectorAnalytics = async (req, res, next) => {
       errorHandler(500, "Failed to fetch inspector analytics: " + error.message)
     );
   }
-};
+}; 
 
 const getConfirmedCustomersForInspector = async (req, res, next) => {
   try {
     const inspectorId = req.user._id;
 
-    const wonBids = await Bid.find({ inspector: inspectorId, status: "won" })
-      .populate({
-        path: "enquiry",
-        select: "customer commodityCategory",
-      });
+    const wonBids = await Bid.find({
+      inspector: inspectorId,
+      status: "won",
+    }).populate({
+      path: "enquiry",
+      select: "customer commodity",
+    });
 
     const validBids = wonBids.filter((bid) => bid.enquiry?.customer);
 
@@ -379,7 +384,9 @@ const getConfirmedCustomersForInspector = async (req, res, next) => {
 
     for (const bid of validBids) {
       const enquiry = bid.enquiry;
-      const customer = await Customer.findById(enquiry.customer).select("name email mobileNumber");
+      const customer = await Customer.findById(enquiry.customer).select(
+        "name email mobileNumber"
+      );
 
       const initialPayment = await Payment.findOne({
         enquiry: enquiry._id,
@@ -393,7 +400,7 @@ const getConfirmedCustomersForInspector = async (req, res, next) => {
           name: customer.name,
           email: customer.email,
           mobileNumber: customer.mobileNumber,
-          commodity: enquiry.commodityCategory,
+          commodity: enquiry.commodity,
           orderId: initialPayment?.razorpayOrderId || "Not available",
         });
       }
@@ -401,10 +408,12 @@ const getConfirmedCustomersForInspector = async (req, res, next) => {
 
     res.status(200).json({ success: true, customers });
   } catch (error) {
-    next({ status: 500, message: "Failed to fetch customers: " + error.message });
+    next({
+      status: 500,
+      message: "Failed to fetch customers: " + error.message,
+    });
   }
 };
-
 
 module.exports = {
   getAvailableEnquiries,
@@ -416,6 +425,5 @@ module.exports = {
   getInspectorHistory,
   getWonBids,
   getInspectorAnalytics,
-  getConfirmedCustomersForInspector
-  
+  getConfirmedCustomersForInspector,
 };

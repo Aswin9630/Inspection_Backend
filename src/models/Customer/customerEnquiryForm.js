@@ -115,7 +115,6 @@ const inspectionEnquirySchema = new mongoose.Schema(
       type: String,
       maxlength: 2000,
     },
-
     status: {
       type: String,
       enum: ["draft", "submitted", "cancelled", "completed"],
@@ -132,10 +131,10 @@ const inspectionEnquirySchema = new mongoose.Schema(
       status: { type: String, enum: ["pending", "paid"], default: "pending" },
       razorpayOrderId: String,
       razorpayPaymentId: String,
-    }
+    }  
   ], 
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("InspectionEnquiry", inspectionEnquirySchema);
+module.exports = mongoose.model("InspectionEnquiry1", inspectionEnquirySchema);

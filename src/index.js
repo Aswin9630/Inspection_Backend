@@ -28,7 +28,7 @@ app.use(express.json());
 app.use(cookieParser()); 
 
 app.get("/test",(req,res)=>{ 
-  res.json({message:"Testing API"}) 
+  res.json({message:"Testing APIs"}) 
 });
 app.use("/auth",authRoutes);
 app.use("/customer",customerRoutes);

@@ -45,7 +45,7 @@ const customerSchema = new mongoose.Schema(
       maxlength: 100,
     },
     publishRequirements: {
-      type: Boolean,
+      type: Boolean, 
       default: false,
     },
     documents: {
@@ -54,9 +54,9 @@ const customerSchema = new mongoose.Schema(
         required: function () {
           return this.publishRequirements;
         },
-      },
+      }, 
       importExportCertificate: {
-        type: String,
+        type: String,  
         required: function () {
           return this.publishRequirements;
         },

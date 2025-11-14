@@ -10,7 +10,6 @@ const nodemailer = require("nodemailer");
 
 const sendVerificationEmail = async (email, name, token, role) => {
   const link = `${process.env.FRONTEND_PROD_URL}/auth/verify-email?token=${token}&role=${role}`;
-
   await transporter.sendMail({
     from: `"Qualty.ai" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -24,4 +23,11 @@ const sendVerificationEmail = async (email, name, token, role) => {
   });
 };
 
-module.exports = {transporter, sendVerificationEmail};
+function htmlEscape(s = "") {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+module.exports = {transporter, sendVerificationEmail, htmlEscape};

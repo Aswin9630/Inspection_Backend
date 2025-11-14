@@ -311,7 +311,6 @@ const raiseEnquiryController = async (req, res, next) => {
       certifications,
       selectionSummary,
     } = req.body;
-    console.log("req", req.body);
     
 
     if (!physicalInspection && !chemicalInspection) {

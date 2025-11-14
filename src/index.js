@@ -12,6 +12,8 @@ const paymentRoutes = require("./routes/payment/paymentRouter")
 const quickServicesRoutes = require("./routes/customer/quickServiceRouter")
 const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorLocationDetailsRouter");
 const chatRoutes = require("./routes/Chat/chatRouter");
+const locationPriceRoutes = require("./routes/QuickService/locationPriceRoutes");
+const quickServiceRoutes = require("./routes/QuickService/quickServiceRoutes");
 const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
@@ -32,11 +34,13 @@ app.get("/test",(req,res)=>{
 });
 app.use("/auth",authRoutes);
 app.use("/customer",customerRoutes);
-app.use("/inspector", inspectorRoutes);
+app.use("/inspector", inspectorRoutes); 
 app.use("/payment", paymentRoutes);
 app.use("/chat", chatRoutes);
 app.use("/quick-services",quickServicesRoutes)
 app.use("/admin/locations", adminLocationRoutes);
+app.use("/locationPrice", locationPriceRoutes);
+app.use("/quickService", quickServiceRoutes);
 
 const server = http.createServer(app)
 initializeSocket(server);

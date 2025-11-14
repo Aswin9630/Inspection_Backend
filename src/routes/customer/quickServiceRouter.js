@@ -15,5 +15,4 @@ router.post("/submit", verifyUser, submitQuickServiceForm);
 router.get("/quick-requests", verifyUser, getQuickServiceHistory);
 router.get("/quick-requests/:id", verifyUser, getQuickServiceDetails)
 
-
 module.exports = router;

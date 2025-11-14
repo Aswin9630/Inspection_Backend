@@ -1,0 +1,13 @@
+const mongoose = require("mongoose");
+
+const locationPriceSchema = new mongoose.Schema({
+  country: { type: String, required: true },
+  state: { type: String }, 
+  region: { type: String, required: true },
+  currency: { type: String, enum: ["INR", "USD"], required: true },
+  price: { type: Number, required: true },
+});
+
+locationPriceSchema.index({ country: 1, region: 1 });
+
+module.exports = mongoose.model("LocationPrice", locationPriceSchema);

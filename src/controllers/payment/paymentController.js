@@ -92,7 +92,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -189,7 +189,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -213,7 +213,7 @@ const webHooksController = async (req, res, next) => {
     const isWebhookValid = validateWebhookSignature(
       JSON.stringify(req.body),
       webhookSignature,
-      process.env.RAZORPAY_WEBHOOK_SECRET
+      process.env.RAZORPAY_TEST_WEBHOOK_SECRET
     );
 
     if (!isWebhookValid) {
@@ -310,7 +310,7 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(razorpayOrderId + "|" + razorpayPaymentId)
       .digest("hex");
 
@@ -372,9 +372,6 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     await bid.enquiry.save();
 
     const customer = bid.enquiry.customer;
-    console.log("customer",customer);
-    console.log("bid",bid);
-    console.log("payment",payment);
     if (customer) {
       await sendCustomerPaymentConfirmation(customer, bid, payment);
       await sendTeamPaymentNotification(customer, bid, payment);
@@ -413,7 +410,7 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 
@@ -469,10 +466,6 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
       (bid && bid.customerViewAmount) || enquiry.inspectionBudget || 0;
     const remainingAfterFinal = Math.max(0, confirmedBidAmount - totalPaid);
 
-        console.log("customerFinal",customer);
-    console.log("bidFinal",bid);
-    console.log("paymentFinal",payment);
-
     if (customer) {
       await sendFinalPaymentConfirmation(customer, bid, payment, {
         totalPaid,
@@ -514,7 +507,7 @@ const verifyQuickServicePayment = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 

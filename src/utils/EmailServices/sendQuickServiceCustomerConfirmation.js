@@ -18,7 +18,6 @@ Your quick service request has been successfully submitted and payment of ₹${p
 📅 Time: ${formattedDate}
 
 Our team will coordinate with inspectors and follow up shortly.
-
 Thank you for choosing Qualty.ai.
   `;
 

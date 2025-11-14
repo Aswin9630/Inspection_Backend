@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const LocationPrice = require("../../models/QuickService/LocationPrice");
 
+const { addLocationPrice } = require("../../controllers/QuickServices/locationPriceController");
+const LocationPrice = require("../../models/QuickService/LocationPrice");
+
+// router.post("/add", addLocationPrice);
+
 router.post("/bulk-add", async (req, res) => {
   try {
     const entries = req.body;

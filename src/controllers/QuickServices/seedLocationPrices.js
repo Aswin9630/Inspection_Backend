@@ -3,6 +3,9 @@ dotenv.config();
 const mongoose = require("mongoose")
 const LocationPrice = require("../../models/QuickService/LocationPrice")
 
+
+console.log("Connecting to:", process.env.MONGODB_URL);
+
 const data = [
   { "country": "Vietnam", "region": "Haiphong", "currency": "USD", "price": 350 },
   { "country": "Vietnam", "region": "Cat Lai", "currency": "USD", "price": 350 },

@@ -19,7 +19,7 @@ const customerUploader = createUploader("customers");
 
 router.post("/raise-enquiry", verifyUser, raiseEnquiryController);
 router.get("/my-enquiries", verifyUser, getMyEnquiries);
-router.get("/enquiry/:id/details", verifyUser, getEnquiryDetails);
+router.get("/raiseEnquiry/:id/details", verifyUser, getEnquiryDetails);
 router.get("/bids/:enquiryId", verifyUser, getBidsForEnquiry);
 router.post("/confirm-bid/:bidId", verifyUser, confirmBid);
 router.get("/payments", verifyUser, getCustomerPayments);

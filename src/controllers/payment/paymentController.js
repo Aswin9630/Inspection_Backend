@@ -25,7 +25,6 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
     const { amount } = req.body;
 
     const enquiry = await InspectionEnquiry.findById(enquiryId);
-    console.log("enq",enquiry)
     const parsedAmount = Number(amount);
 
     if (!parsedAmount || isNaN(parsedAmount || parsedAmount <= 0)) {

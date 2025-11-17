@@ -6,267 +6,12 @@ const errorHandler = require("../../utils/errorHandler");
 const sendEnquiryNotification = require("../../utils/EmailServices/sendEnquiryNotification");
 const sendCustomerEnquiryConfirmation = require("../../utils/EmailServices/sendCustomerEnquiryConfirmation");
 
-const raiseEnquiryController5 = async (req, res, next) => { 
-  try {
-    if (req.user.role !== "customer") {
-      return next(errorHandler(403, "Only customers can raise enquiries"));
-    }
 
-    const customer = await Customer.findById(req.user._id).select(
-      "name email mobileNumber publishRequirements documents"
-    );
-
-    if (!customer) {
-      return next(errorHandler(404, "Customer not found"));
-    }
-
-    const isMissing = (value) =>
-      !value || typeof value !== "string" || value.trim().length === 0;
-
-    if (
-      isMissing(customer.documents?.tradeLicense) ||
-      isMissing(customer.documents?.importExportCertificate)
-    ) {
-      return next(
-        errorHandler(
-          403,
-          "You must upload both Trade License and Import Export Certificate before raising an enquiry"
-        )
-      );
-    }
-
-    const now = new Date();
-    const indiaTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
-
-    const hour = indiaTime.getHours();
-
-    const isBusinessHour = hour >= 9 && hour < 23;
-
-    if (!isBusinessHour) {
-      return next(
-        errorHandler(
-          403,
-          "Enquiries can only be raised between 9:00 AM and 11:00 PM IST"
-        )
-      );
-    }
-
-    const { inspectionTypes, physicalParameters, chemicalParameters, ...rest } =
-      req.body;
-
-    const isPhysical = inspectionTypes?.physical === true;
-    const isChemical = inspectionTypes?.chemical === true;
-
-    if (!isPhysical && !isChemical) {
-      return next(
-        errorHandler(
-          400,
-          "You must select at least one inspection type: physical or chemical"
-        )
-      );
-    }
-
-    const customerBudget = Number(rest.inspectionBudget) || 0;
-    if (customerBudget <= 0) {
-      return next(
-        errorHandler(400, "Inspection budget must be greater than zero")
-      );
-    }
-
-    const platformFee = Math.round(customerBudget * 0.3);
-
-    const enquiryData = {
-      ...rest,
-      customer: req.user._id,
-      contact: {
-        name: customer.name,
-        email: customer.email,
-        phoneNumber: customer.mobileNumber,
-      },
-      inspectionTypes: {
-        physical: inspectionTypes?.physical || false,
-        chemical: inspectionTypes?.chemical || false,
-      },
-      platformFee,
-      paymentPhases: [
-        {
-          phase: "initial",
-          amount: Math.round(customerBudget * 0.3),
-          status: "pending",
-        },
-        {
-          phase: "inspection",
-          amount: Math.round(customerBudget * 0.2),
-          status: "pending",
-        },
-        {
-          phase: "final",
-          amount: Math.round(customerBudget * 0.5),
-          status: "pending",
-        },
-      ],
-      currentPhase: "initial",
-    };
-
-    if (inspectionTypes?.physical) {
-      enquiryData.physicalParameters = physicalParameters;
-    }
-
-    if (inspectionTypes?.chemical) {
-      enquiryData.chemicalParameters = chemicalParameters;
-    }
-
-    const newEnquiry = await InspectionEnquiry.create(enquiryData);
-
-    const { platformFee: _platformFee, ...sanitizedEnquiry } =
-      newEnquiry.toObject();
-
-    await sendEnquiryNotification(customer, sanitizedEnquiry);
-    await sendCustomerEnquiryConfirmation(customer, sanitizedEnquiry);
-
-    res.status(201).json({
-      success: true,
-      message: "Inspection enquiry raised successfully",
-      enquiry: sanitizedEnquiry,
-    });
-  } catch (error) {
-    next(errorHandler(500, "Failed to raise enquiry: " + error.message));
-  }
-};
-
-const getMyEnquiries5 = async (req, res, next) => {
-  try {
-    if (req.user.role !== "customer") {
-      return next(errorHandler(403, "Only customers can view their enquiries"));
-    }
-
-    const enquiries = await InspectionEnquiry.find({ customer: req.user._id })
-      .sort({ createdAt: -1 })
-      .populate("confirmedBid");
-
-    res.json({ success: true, enquiries });
-  } catch (error) {
-    next(errorHandler(500, "Failed to fetch enquiries: " + error.message));
-  }
-};
-
-const getBidsForEnquiry5 = async (req, res, next) => {
-  try {
-    const { enquiryId } = req.params;
-
-    const enquiry = await InspectionEnquiry.findById(enquiryId);
-    if (!enquiry || String(enquiry.customer) !== String(req.user._id)) {
-      return next(errorHandler(403, "Unauthorized or enquiry not found"));
-    }
-
-    const bids = await Bid.find({
-      enquiry: enquiryId,
-      status: { $in: ["active", "won"] },
-    }).populate("inspector", "name company rating inspectionsCount");
-
-    const viewAmounts = bids.map((b) => b.customerViewAmount);
-    const stats = {
-      lowestBid: Math.min(...viewAmounts),
-      highestBid: Math.max(...viewAmounts),
-      averageBid: viewAmounts.reduce((a, b) => a + b, 0) / viewAmounts.length,
-      totalBids: bids.length,
-    };
-
-    res.json({
-      success: true,
-      bids,
-      stats,
-      enquiry: {
-        status: enquiry.status,
-        currentPhase: enquiry.currentPhase,
-        _id: enquiry._id,
-      },
-    });
-  } catch (error) {
-    next(errorHandler(500, "Failed to fetch bids: " + error.message));
-  }
-};
-
-const confirmBid5 = async (req, res, next) => {
-  try {
-    const { bidId } = req.params;
-
-    const bid = await Bid.findById(bidId).populate("enquiry");
-    if (!bid || String(bid.enquiry.customer) !== String(req.user._id)) {
-      return next(errorHandler(403, "Unauthorized or bid not found"));
-    }
-
-    if (bid.status !== "active") {
-      return next(errorHandler(400, "Only active bids can be confirmed"));
-    }
-
-    bid.status = "won";
-    await bid.save();
-
-    await Bid.updateMany(
-      { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
-      { $set: { status: "lost" } }
-    );
-
-    bid.enquiry.confirmedBid = bid._id;
-    bid.enquiry.status = "completed";
-    await bid.enquiry.save();
-
-    res.json({ success: true, message: "Bid confirmed", bid });
-  } catch (error) {
-    next(errorHandler(500, "Failed to confirm bid: " + error.message));
-  }
-};
-
-const cancelEnquiry5 = async (req, res, next) => {
-  try {
-    const { enquiryId } = req.params;
-
-    const enquiry = await InspectionEnquiry.findById(enquiryId);
-    if (!enquiry || String(enquiry.customer) !== String(req.user._id)) {
-      return next(errorHandler(403, "Unauthorized or enquiry not found"));
-    }
-
-    enquiry.status = "cancelled";
-    await enquiry.save();
-
-    res.json({ success: true, message: "Enquiry cancelled", enquiry });
-  } catch (error) {
-    next(errorHandler(500, "Failed to cancel enquiry: " + error.message));
-  }
-};
-
-const getEnquiryDetails5 = async (req, res, next) => {
-  try {
-    const enquiry = await InspectionEnquiry.findById(req.params.id).populate({
-      path: "confirmedBid",
-      populate: {
-        path: "inspector",
-        select: "name company email mobileNumber",
-      },
-    });
-
-    if (!enquiry || enquiry.customer.toString() !== req.user._id.toString()) {
-      return next(errorHandler(404, "Enquiry not found or unauthorized"));
-    }
-
-    const payment = await Payment.findOne({
-      enquiry: enquiry._id,
-      status: "paid",
-    });
-
-    res.json({
-      success: true,
-      enquiry,
-      bid: enquiry.confirmedBid,
-      payment,
-    });
-  } catch (err) {
-    next(errorHandler(500, "Failed to fetch enquiry details"));
-  }
-};
+function countryLooksLikeIndia(countryStr) {
+  if (!countryStr) return false;
+  const c = String(countryStr).trim().toLowerCase();
+  return c === "india" || c === "in" || c.includes("india");
+}
 
 const raiseEnquiryController = async (req, res, next) => {
   try {
@@ -311,7 +56,6 @@ const raiseEnquiryController = async (req, res, next) => {
       certifications,
       selectionSummary,
     } = req.body;
-    
 
     if (!physicalInspection && !chemicalInspection) {
       return next(errorHandler(400, "Select at least one inspection type"));
@@ -325,6 +69,8 @@ const raiseEnquiryController = async (req, res, next) => {
     if (budgetVal <= 0) {
       return next(errorHandler(400, "Inspection budget must be greater than zero"));
     }
+
+    const currency = countryLooksLikeIndia(country) ? "INR" : "USD";
 
     const platformFee = Math.round(budgetVal * 0.3);
 
@@ -367,6 +113,7 @@ const urgencyEnum = allowedUrgency.includes(urgency) ? urgency : "Medium";
       selectionSummary: selectionSummary || "",
       status: "submitted",
       currentPhase: "initial", 
+      currency,
       paymentPhases: [
         { phase: "initial", amount: Math.round(budgetVal * 0.3), status: "pending" },
         { phase: "inspection", amount: Math.round(budgetVal * 0.2), status: "pending" },

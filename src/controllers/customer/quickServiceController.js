@@ -107,7 +107,7 @@ const submitQuickServiceForm = async (req, res, next) => {
       order: razorpayOrder,
       requestId: quickRequest._id,
       paymentId: payment._id,
-       keyId: process.env.RAZORPAY_KEY_ID,
+       keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: req.user.name,
         email: req.user.email,

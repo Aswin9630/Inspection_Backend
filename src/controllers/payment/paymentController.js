@@ -25,6 +25,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
     const { amount } = req.body;
 
     const enquiry = await InspectionEnquiry.findById(enquiryId);
+    console.log("enq",enquiry)
     const parsedAmount = Number(amount);
 
     if (!parsedAmount || isNaN(parsedAmount || parsedAmount <= 0)) {
@@ -63,7 +64,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
 
     const razorpayOrder = await razorpayInstance.orders.create({
       amount: amountInPaise,
-      currency: "INR",
+      currency: enquiry.currency,
       receipt: `receipt_${enquiryId}`,
       payment_capture: 1,
     });
@@ -72,7 +73,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       enquiry: enquiry._id,
       customer: req.user._id,
       amount: initialAmount,
-      currency: "INR",
+      currency: enquiry.currency,
       status: "pending",
       phase: "initial",
       razorpayOrderId: razorpayOrder.id,
@@ -92,7 +93,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -155,7 +156,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
 
     const razorpayOrder = await razorpayInstance.orders.create({
       amount: amountInPaise,
-      currency: "INR",
+      currency: enquiry.currency,
       receipt: `receipt_final_${enquiryId}`,
       payment_capture: 1,
     });
@@ -164,7 +165,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       enquiry: enquiry._id,
       customer: req.user._id,
       amount: finalAmount,
-      currency: "INR",
+      currency: enquiry.currency,
       status: "pending",
       phase: "final",
       razorpayOrderId: razorpayOrder.id,
@@ -189,7 +190,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -310,7 +311,7 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(razorpayOrderId + "|" + razorpayPaymentId)
       .digest("hex");
 
@@ -410,7 +411,7 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 
@@ -507,7 +508,7 @@ const verifyQuickServicePayment = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 

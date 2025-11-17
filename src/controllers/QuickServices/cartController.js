@@ -73,7 +73,7 @@ const verifyPayment = async (req, res) => {
 
     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(payload)
       .digest("hex");
 
@@ -568,7 +568,7 @@ module.exports = {
 //     }
 
 //     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
-//     const expectedSignature = crypto.createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET).update(payload).digest("hex");
+//     const expectedSignature = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(payload).digest("hex");
 
 //     if (expectedSignature !== razorpay_signature) {
 //       return res.status(400).json({ error: "Invalid signature" });

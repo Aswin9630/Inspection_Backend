@@ -52,7 +52,7 @@ const createOrder = async (req, res) => {
       amount: order.amount,
       receipt: order.receipt,
       notes: order.notes,
-      key: process.env.RAZORPAY_TEST_KEY_ID,
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error("createOrder error:", err);
@@ -548,7 +548,7 @@ module.exports = {
 //       amount: order.amount,
 //       receipt: order.receipt,
 //       notes: order.notes,
-//       key: process.env.RAZORPAY_TEST_KEY_ID,
+//       key: process.env.RAZORPAY_KEY_ID,
 //     });
 //   } catch (err) {
 //     console.error("createOrder error:", err);

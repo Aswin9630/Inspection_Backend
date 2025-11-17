@@ -452,7 +452,7 @@ const markCartItemEnquiryRaised = async (req, res) => {
         user,
         cartItem: item,
         company: { name: "Qualty.ai", email: process.env.EMAIL_USER, phone: process.env.COMPANY_PHONE || "" },
-        note: "Customer raised enquiry from UI.",
+        note: "Customer raised enquiry from quick service.",
       });
     } catch (mailErr) {
       console.error("sendEnquiryNotification error:", mailErr);

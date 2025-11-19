@@ -1,51 +1,9 @@
-// const { htmlEscape } = require("../../sendVerificationEmail");
-
-// function html({ customerName, amount, orderId, paymentId, date, serviceSummary, supportEmail }) {
-//   return `
-//   <div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:600px;margin:0 auto;padding:20px">
-//     <h2 style="margin:0 0 8px;font-weight:600">Payment received</h2>
-//     <p style="margin:0 0 12px;color:#555">Hi <strong>${htmlEscape(customerName)}</strong>,</p>
-//     <p style="margin:0 0 12px;color:#333">We’ve received your payment of <strong>${htmlEscape(amount)}</strong> for Quick Service.</p>
-//     <table style="width:100%;border-collapse:collapse;margin:12px 0">
-//       <tr><td style="color:#666;padding:6px 0">Order</td><td style="padding:6px 0"><strong>${htmlEscape(orderId)}</strong></td></tr>
-//       <tr><td style="color:#666;padding:6px 0">Payment ID</td><td style="padding:6px 0"><code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">${htmlEscape(paymentId)}</code></td></tr>
-//       <tr><td style="color:#666;padding:6px 0">Date</td><td style="padding:6px 0">${htmlEscape(date)}</td></tr>
-//       <tr><td style="color:#666;padding:6px 0">Service</td><td style="padding:6px 0">${htmlEscape(serviceSummary)}</td></tr>
-//     </table>
-//     <p style="margin:0 0 12px;color:#333">Next steps: Our team will start processing your request and follow up if any details are needed.</p>
-//     <p style="margin-top:16px;color:#777;font-size:13px">Questions? Reply to this email or contact <a href="mailto:${htmlEscape(supportEmail)}">${htmlEscape(supportEmail)}</a>.</p>
-//     <p style="margin-top:16px;font-weight:600">Qualty.ai</p>
-//   </div>
-//   `;
-// }
-
-// function text({ customerName, amount, orderId, paymentId, date, serviceSummary, supportEmail }) {
-//   return `Payment received
-
-// Hi ${customerName}
-
-// We’ve received your payment of ${amount} for Quick Service.
-
-// Order: ${orderId}
-// Payment ID: ${paymentId}
-// Date: ${date}
-// Service: ${serviceSummary}
-
-// Next steps: Our team will start processing your request and follow up if any details are needed.
-
-// Questions? Reply to this email or contact ${supportEmail}
-
-// Qualty.ai`;
-// }
-
-// module.exports = { html, text };
-
-
 const { transporter } = require("../../sendVerificationEmail");
 
 module.exports = async function paymentUser(customer = {}, order = {}, payment = {}, opts = {}) {
+  const currencySymbol = order.currency === "USD" ? "$" : "₹";
   const formattedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-  const totalLabel = opts.amountLabel || (order.total ? (order.currency === "USD" ? `$${order.total}` : `₹${order.total}`) : "—");
+  const totalLabel = opts.amountLabel || (order.total ? (order.currency === "USD" ? `${currencySymbol}${order.total}` : `${currencySymbol}${order.total}`) : "—");
   const logoUrl = opts.logoUrl || "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
 
   const html = `

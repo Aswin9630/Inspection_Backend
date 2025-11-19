@@ -3,6 +3,8 @@ const { transporter } = require("../sendVerificationEmail");
 const sendQuickServiceCustomerConfirmation = async (customer, request, payment) => {
   const formattedDate = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
+   const currencySymbol = payment.currency === "USD" ? "$" : "₹";
+
   const text = `
 Hi ${customer.name},
 
@@ -12,7 +14,7 @@ Your quick service request has been successfully submitted and payment of ₹${p
 📦 Commodity: ${request.commodityCategory}
 📅 Inspection Date: ${new Date(request.inspectionDate).toLocaleDateString("en-IN")}
 📊 Volume: ${request.volume}
-💰 Amount Paid: ₹${payment.amount}
+💰 Amount Paid:  ${currencySymbol}${payment.amount}
 🧾 Order ID: ${payment.razorpayOrderId}
 💳 Payment ID: ${payment.razorpayPaymentId}
 📅 Time: ${formattedDate}

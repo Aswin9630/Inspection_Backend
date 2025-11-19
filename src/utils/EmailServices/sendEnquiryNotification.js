@@ -12,6 +12,7 @@ const sendEnquiryNotification = async (customer, enquiry) => {
     inspectionBudget,
     dateFrom,
     dateTo,
+    currency
   } = enquiry;
 
   const formattedFromDate = new Date(dateFrom).toLocaleDateString("en-IN", {
@@ -21,6 +22,8 @@ const sendEnquiryNotification = async (customer, enquiry) => {
   const formattedToDate = new Date(dateTo).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric"
   });
+
+  const currencySymbol = currency === "USD" ? "$" : "₹";
 
   const plainText = `
 📢 New Inspection Enquiry Raised
@@ -33,7 +36,7 @@ const sendEnquiryNotification = async (customer, enquiry) => {
 📦 Commodity: ${category} - ${commodity}
 📊 Volume: ${volume} units
 ⚡ Urgency Level: ${urgency}
-💰 Budget: ₹${inspectionBudget}
+💰 Budget: ${currencySymbol}${inspectionBudget}
 📅 Inspection Window: ${formattedFromDate} to ${formattedToDate}
  
 ✅ Status: Draft

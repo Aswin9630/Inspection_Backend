@@ -9,6 +9,7 @@ const sendTeamPaymentNotification = async (customer, bid, payment, opts = {}) =>
   const phaseLabel = payment.phase === "final" ? "Final (70%)" : "Initial (30%)";
 
   const logoUrl = "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
+    const currencySymbol = payment.currency === "USD" ? "$" : "₹";
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111; background: #fff; padding: 24px; max-width: 720px; margin: auto; border: 1px solid #e6e6e6;">
@@ -44,7 +45,7 @@ const sendTeamPaymentNotification = async (customer, bid, payment, opts = {}) =>
           <thead>
             <tr style="background:#111;color:#fff;text-align:left">
               <th style="padding:10px">Phase</th>
-              <th style="padding:10px;text-align:right">Amount (₹)</th>
+              <th style="padding:10px;text-align:right">Amount (${currencySymbol})</th>
             </tr>
           </thead>
           <tbody>

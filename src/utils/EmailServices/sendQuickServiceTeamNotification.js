@@ -3,6 +3,8 @@ const { transporter } = require("../sendVerificationEmail");
 const sendQuickServiceTeamNotification = async (customer, request, payment) => {
   const formattedDate = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
+  const currencySymbol = payment.currency === "USD" ? "$" : "₹";
+
   const text = `
 📢 New Quick Service Request Received
 
@@ -16,7 +18,7 @@ const sendQuickServiceTeamNotification = async (customer, request, payment) => {
 🔍 Inspection Type: ${request.inspectionTypes}
 🛠 Service: ${request.inspectionService}
 📊 Volume: ${request.volume}
-💰 Amount Paid: ₹${payment.amount}
+💰 Amount Paid: ${currencySymbol}${payment.amount}
 🧾 Order ID: ${payment.razorpayOrderId}
 💳 Payment ID: ${payment.razorpayPaymentId}
 📅 Time: ${formattedDate}

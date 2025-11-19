@@ -6,6 +6,7 @@ const sendCustomerPaymentConfirmation = async (customer, bid, payment) => {
   const totalAmount = bid.customerViewAmount || 0;
   const paidAmount = payment.amount;
   const remainingAmount = Math.max(0, totalAmount - paidAmount);
+    const currencySymbol = payment.currency === "USD" ? "$" : "₹";
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #000; background: #fff; padding: 20px; max-width: 600px; margin: auto; border: 1px solid #ddd;">
@@ -23,7 +24,7 @@ const sendCustomerPaymentConfirmation = async (customer, bid, payment) => {
         <thead>
           <tr style="background: #000; color: #fff;">
             <th style="padding: 10px; text-align: left;">Description</th>
-            <th style="padding: 10px; text-align: right;">Amount (₹)</th>
+            <th style="padding: 10px; text-align: right;">Amount (${currencySymbol})</th>
           </tr>
         </thead>
         <tbody>

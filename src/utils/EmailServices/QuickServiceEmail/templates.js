@@ -26,10 +26,6 @@ function footerHtml() {
   `;
 }
 
-/**
- * Payment notification HTML (customer/team)
- * payload: { user, order, payment, items, totals, companyInfo }
- */
 function paymentHtml(payload) {
   const { user, order, payment, items = [], totals = {}, company = {} } = payload;
   const currency = payment?.currency || totals?.currency || "INR";

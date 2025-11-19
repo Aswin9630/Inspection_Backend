@@ -13,7 +13,10 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
     dateFrom,
     dateTo,
     _id,
-  } = enquiry;
+    currency
+  } = enquiry; 
+              
+  const currencySymbol = currency === "USD" ? "$" : "₹";
 
   const formattedFromDate = new Date(dateFrom).toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric",
@@ -57,7 +60,7 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
           <thead>
             <tr style="background:#111;color:#fff;text-align:left">
               <th style="padding:10px">Description</th>
-              <th style="padding:10px;text-align:right">Amount (₹)</th>
+              <th style="padding:10px;text-align:right">Amount (${currencySymbol})</th>
             </tr>
           </thead>
           <tbody>

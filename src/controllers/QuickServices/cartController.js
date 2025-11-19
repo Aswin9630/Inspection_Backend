@@ -52,7 +52,7 @@ const createOrder = async (req, res) => {
       amount: order.amount,
       receipt: order.receipt,
       notes: order.notes,
-      key: process.env.RAZORPAY_TEST_KEY_ID,
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error("createOrder error:", err);
@@ -73,7 +73,7 @@ const verifyPayment = async (req, res) => {
 
     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(payload)
       .digest("hex");
 

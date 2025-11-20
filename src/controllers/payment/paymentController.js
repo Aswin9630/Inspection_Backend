@@ -92,7 +92,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -189,7 +189,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       order: razorpayOrder,
       enquiryId: enquiry._id,
       paymentId: payment._id,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: process.env.RAZORPAY_TEST_KEY_ID,
       customerDetails: {
         name: customer.name,
         email: customer.email,
@@ -310,7 +310,7 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(razorpayOrderId + "|" + razorpayPaymentId)
       .digest("hex");
 
@@ -410,7 +410,7 @@ const verifyFinalPaymentAndCompleteEnquiry = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 
@@ -507,7 +507,7 @@ const verifyQuickServicePayment = async (req, res, next) => {
     }
 
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_TEST_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 

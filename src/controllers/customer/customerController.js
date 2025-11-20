@@ -211,6 +211,7 @@ const getBidsForEnquiry = async (req, res, next) => {
         status: enquiry.status,
         currentPhase: enquiry.currentPhase,
         _id: enquiry._id,
+        currency:enquiry.currency
       },
     });
   } catch (error) {

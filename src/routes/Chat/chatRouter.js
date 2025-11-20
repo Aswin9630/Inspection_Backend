@@ -10,6 +10,4 @@ router.get("/history/:orderId", getChatHistory);
 router.get("/progress/:orderId", getProgressLevel);
 router.post("/progress-multiple", getProgressForOrders);
 
-
-
 module.exports = router;

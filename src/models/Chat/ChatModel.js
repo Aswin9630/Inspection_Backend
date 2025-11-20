@@ -13,6 +13,20 @@ const ParticipantSchema = new Schema({
   },
 });
 
+const StageSchema = new Schema({
+  stageIndex: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ["pending", "in_progress", "pending_customer", "completed", "rejected"],
+    default: "pending",
+  },
+  inspectorStartedAt: Date,
+  inspectorFinishedAt: Date,
+  customerAcceptedAt: Date,
+  customerRejectedAt: Date,
+  rejectionReason: String,
+});
+
 const ChatRoomSchema = new Schema(
   {
     orderId: {
@@ -23,10 +37,20 @@ const ChatRoomSchema = new Schema(
     participants: [ParticipantSchema],
     createdBy: ParticipantSchema,
     progressLevel: { type: Number, default: 0 },
-    
+      stages: {
+      type: [StageSchema],
+      default: [
+        { stageIndex: 0, status: "pending" },
+        { stageIndex: 1, status: "pending" },
+        { stageIndex: 2, status: "pending" },
+        { stageIndex: 3, status: "pending" },
+      ],
+    },
   },
   { timestamps: true }
 );
+
+
 
 const MessageSchema = new Schema(
   {

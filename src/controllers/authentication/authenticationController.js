@@ -363,9 +363,43 @@ const getUserProfileController = async (req, res, next) => {
   }
 };
 
+const findNameById = async (id) => {
+  let u = await Customer.findById(id).select("name email").lean();
+  if (u) return { displayName: u.name || u.email || null, role: "customer", raw: u };
+
+  u = await Inspector.findById(id).select("name email").lean();
+  if (u) return { displayName: u.name || u.email || null, role: "inspector", raw: u };
+
+  return null;
+};
+
+const getUserById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return next(errorHandler(400, "Invalid user id"));
+    }
+
+    const found = await findNameById(id);
+    if (!found) return next(errorHandler(404, "User not found"));
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        _id: id,
+        displayName: found.displayName,
+        role: found.role,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   signInController,
   signUpController,
   logoutController,
   getUserProfileController,
+  getUserById
 };

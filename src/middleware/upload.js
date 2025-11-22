@@ -3,14 +3,23 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("../config/cloudinary");
 
 const createUploader = (folderName) => {
+
+
   const storage = new CloudinaryStorage({
-    cloudinary,
-    params: {
+  cloudinary,
+  params: async (req, file) => {
+      const ext = file.originalname.split(".").pop().toLowerCase();
+    const isRaw = ["pdf", "docx", "xlsx", "zip"].includes(ext);
+
+    return {
       folder: folderName,
-      allowed_formats: ["jpg", "png", "pdf", "docx", "mp4", "mov", "avi", "webm",, "xlsx", "zip"],
-      resource_type: "auto",
-    },
-  });
+      resource_type:  isRaw ? "raw" : "auto",
+      public_id: file.originalname.replace(/\.[^/.]+$/, ""), 
+      format: ext,
+      allowed_formats: ["jpg", "png", "pdf", "docx", "mp4", "mov", "avi", "webm", "xlsx", "zip"],
+    };
+  },
+});
 
   return multer({ storage });
 };

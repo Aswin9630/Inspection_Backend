@@ -26,7 +26,11 @@ app.use(cors({
 }
 )); 
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf && buf.toString ? buf.toString() : "";
+  }
+}));
 app.use(cookieParser()); 
 
 app.get("/test",(req,res)=>{ 

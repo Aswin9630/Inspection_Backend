@@ -4,10 +4,10 @@ const { createInitialOrderForEnquiry, webHooksController,verifyInitialPaymentAnd
 const verifyUser = require("../../middleware/verifyUser");
 
 router.post("/createInitialOrder/:enquiryId", verifyUser, createInitialOrderForEnquiry);
-router.post("/createFinalOrder/:enquiryId", verifyUser, createFinalOrderForEnquiry);
-router.post("/webhook", webHooksController)
 router.post("/verify", verifyUser, verifyInitialPaymentAndConfirmBid);
+router.post("/createFinalOrder/:enquiryId", verifyUser, createFinalOrderForEnquiry);
 router.post("/verifyFinal", verifyUser, verifyFinalPaymentAndCompleteEnquiry);
+router.post("/webhook", webHooksController)
 router.post("/verifyQuickService", verifyUser, verifyQuickServicePayment);
 
 module.exports = router;

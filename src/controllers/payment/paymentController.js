@@ -321,11 +321,23 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
     }
 
     const payment = await Payment.findById(paymentId);
-    if (!payment || payment.status === "paid" || payment.phase !== "initial") {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found or already processed",
+   if (!payment) {
+      console.warn("verify: payment record not found", paymentId);
+      return res.status(404).json({ success: false, message: "Payment record not found" });
+    }
+
+    if (payment.status === "paid") {
+      console.info("verify: payment already processed", paymentId);
+      return res.status(200).json({
+        success: true,
+        message: "Payment already processed",
+        amountPaid: payment.amount,
+        balanceAmount: null,
       });
+    }
+
+    if (payment.phase !== "initial") {
+      return res.status(400).json({ success: false, message: "Payment phase mismatch" });
     }
 
     payment.status = "paid";

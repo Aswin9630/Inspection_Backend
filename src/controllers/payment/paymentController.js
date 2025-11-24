@@ -62,7 +62,7 @@ const createInitialOrderForEnquiry = async (req, res, next) => {
       amount: amountInPaise,
       currency: enquiry.currency || "INR",
       receipt: `receipt_${enquiryId}`,
-      payment_capture: 1,
+      payment_capture: 0,
     });
 
     // store bidId on payment so webhook can find the bid reliably
@@ -118,55 +118,129 @@ const webHooksController = async (req, res, next) => {
     const event = req.body.event;
     const paymentDetails = req.body.payload?.payment?.entity;
 
-    if (event === "payment.captured" && paymentDetails) {
-      const orderId = paymentDetails.order_id;
-      const razorpayPaymentId = paymentDetails.id;
+    // if (event === "payment.captured" && paymentDetails) {
+    //   const orderId = paymentDetails.order_id;
+    //   const razorpayPaymentId = paymentDetails.id;
 
-      const payment = await Payment.findOne({ razorpayOrderId: orderId });
-      if (!payment) {
-        console.warn("webhook: payment record not found for order", orderId);
-        return res.status(404).json({ success: false, message: "Payment record not found" });
-      }
+    //   const payment = await Payment.findOne({ razorpayOrderId: orderId });
+    //   if (!payment) {
+    //     console.warn("webhook: payment record not found for order", orderId);
+    //     return res.status(404).json({ success: false, message: "Payment record not found" });
+    //   }
 
-      if (payment.status === "paid") {
-        console.info("webhook: payment already marked paid", payment._id);
-        return res.status(200).json({ success: true, message: "Already processed" });
-      }
+    //   if (payment.status === "paid") {
+    //     console.info("webhook: payment already marked paid", payment._id);
+    //     return res.status(200).json({ success: true, message: "Already processed" });
+    //   }
 
-      payment.status = "paid";
-      payment.razorpayPaymentId = razorpayPaymentId;
-      payment.paymentMode = "razorpay";
-      await payment.save();
+    //   payment.status = "paid";
+    //   payment.razorpayPaymentId = razorpayPaymentId;
+    //   payment.paymentMode = "razorpay";
+    //   payment.paidAt = new Date();
+    //   await payment.save();
 
-      let bid = null;
-      if (payment.bid) {
-        bid = await Bid.findById(payment.bid);
-      } else {
-        bid = await Bid.findOne({ enquiry: payment.enquiry, status: "active" });
-      }
+    //   let bid = null;
+    //   if (payment.bid) {
+    //     bid = await Bid.findById(payment.bid);
+    //   } else {
+    //     bid = await Bid.findOne({ enquiry: payment.enquiry, status: "active" });
+    //   }
 
-      if (!bid) {
-        console.warn("webhook: matching bid not found for payment", payment._id);
-        return res.status(200).json({ success: true, message: "Payment recorded but bid not found" });
-      }
+    //   if (!bid) {
+    //     console.warn("webhook: matching bid not found for payment", payment._id);
+    //     return res.status(200).json({ success: true, message: "Payment recorded but bid not found" });
+    //   }
 
-      bid.status = "won";
-      await bid.save();
+    //   bid.status = "won";
+    //   await bid.save();
 
-      await Bid.updateMany(
-        { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
-        { $set: { status: "lost" } }
+    //   await Bid.updateMany(
+    //     { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
+    //     { $set: { status: "lost" } }
+    //   );
+
+    //   const enquiry = await InspectionEnquiry.findById(payment.enquiry);
+    //   if (enquiry) {
+    //     enquiry.confirmedBid = bid._id;
+    //     enquiry.status = "completed";
+    //     await enquiry.save();
+    //   }
+
+    //   return res.status(200).json({ success: true, message: "Bid confirmed via webhook", bidId: bid._id });
+    // }
+    // inside webHooksController, after finding payment and paymentDetails
+if (event === "payment.captured" && paymentDetails) {
+  const orderId = paymentDetails.order_id;
+  const razorpayPaymentId = paymentDetails.id;
+
+  const payment = await Payment.findOne({ razorpayOrderId: orderId });
+  if (!payment) {
+    console.warn("webhook: payment record not found for order", orderId);
+    return res.status(404).json({ success: false, message: "Payment record not found" });
+  }
+
+  // idempotent: if already paid, return OK
+  if (payment.status === "paid") {
+    console.info("webhook: payment already marked paid", payment._id);
+    return res.status(200).json({ success: true, message: "Already processed" });
+  }
+
+  // mark payment paid
+  payment.status = "paid";
+  payment.razorpayPaymentId = razorpayPaymentId;
+  payment.paymentMode = "razorpay";
+  payment.paidAt = new Date();
+  await payment.save();
+
+  // find bid reliably (you already store bid on Payment)
+  let bid = null;
+  if (payment.bid) {
+    bid = await Bid.findById(payment.bid);
+  } else {
+    bid = await Bid.findOne({ enquiry: payment.enquiry, status: "active" });
+  }
+
+  // if no bid, log and return OK (payment recorded)
+  if (!bid) {
+    console.warn("webhook: matching bid not found for payment", payment._id);
+    return res.status(200).json({ success: true, message: "Payment recorded but bid not found" });
+  }
+
+  // mark bid won and others lost (this is OK for initial and final)
+  bid.status = "won";
+  await bid.save();
+  await Bid.updateMany(
+    { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
+    { $set: { status: "lost" } }
+  );
+
+  // update enquiry based on payment.phase
+  const enquiry = await InspectionEnquiry.findById(payment.enquiry);
+  if (enquiry) {
+    enquiry.confirmedBid = bid._id;
+
+    if (payment.phase === "initial") {
+      // initial payment received -> move to final phase, do NOT mark completed
+      enquiry.status = "submitted";
+      enquiry.currentPhase = "final";
+      enquiry.paymentPhases = enquiry.paymentPhases.map((p) =>
+        p.phase === "initial" ? { ...p, status: "paid", razorpayPaymentId } : p
       );
-
-      const enquiry = await InspectionEnquiry.findById(payment.enquiry);
-      if (enquiry) {
-        enquiry.confirmedBid = bid._id;
-        enquiry.status = "completed";
-        await enquiry.save();
-      }
-
-      return res.status(200).json({ success: true, message: "Bid confirmed via webhook", bidId: bid._id });
+    } else if (payment.phase === "final") {
+      // final payment received -> mark completed
+      enquiry.status = "completed";
+      enquiry.currentPhase = "completed";
+      enquiry.paymentPhases = enquiry.paymentPhases.map((p) =>
+        p.phase === "final" ? { ...p, status: "paid", razorpayPaymentId } : p
+      );
     }
+
+    await enquiry.save();
+  }
+
+  return res.status(200).json({ success: true, message: "Payment processed via webhook", bidId: bid._id });
+}
+
 
     return res.status(200).json({ message: "Webhook received, no action taken" });
   } catch (error) {
@@ -183,66 +257,131 @@ const verifyInitialPaymentAndConfirmBid = async (req, res, next) => {
       return next(errorHandler(400, "Missing required payment verification fields"));
     }
 
-    const generatedSignature = crypto.createHmac("sha256", KEY_SECRET).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest("hex");
-    if (generatedSignature !== razorpaySignature) {
-      return res.status(400).json({ success: false, message: "Invalid Razorpay signature" });
-    }
+    // const generatedSignature = crypto.createHmac("sha256", KEY_SECRET).update(`${razorpayOrderId}|${razorpayPaymentId}`).digest("hex");
+    // if (generatedSignature !== razorpaySignature) {
+    //   return res.status(400).json({ success: false, message: "Invalid Razorpay signature" });
+    // }
 
-    const payment = await Payment.findById(paymentId);
-    if (!payment) {
-      console.warn("verify: payment record not found", paymentId);
-      return res.status(404).json({ success: false, message: "Payment record not found" });
-    }
+    // const payment = await Payment.findById(paymentId);
+    // if (!payment) {
+    //   console.warn("verify: payment record not found", paymentId);
+    //   return res.status(404).json({ success: false, message: "Payment record not found" });
+    // }
 
-    if (payment.status === "paid") {
-      console.info("verify: payment already processed", paymentId);
-      // return success but include amounts so frontend can refresh UI
-      const confirmedBid = await Bid.findById(bidId);
-      const confirmedBidAmount = confirmedBid?.customerViewAmount || null;
-      const amountPaid = payment.amount;
-      const balanceAmount = confirmedBidAmount !== null ? Math.max(0, confirmedBidAmount - amountPaid) : null;
+    // if (payment.status === "paid") {
+    //   console.info("verify: payment already processed", paymentId);
+    //   const confirmedBid = await Bid.findById(bidId);
+    //   const confirmedBidAmount = confirmedBid?.customerViewAmount || null;
+    //   const amountPaid = payment.amount;
+    //   const balanceAmount = confirmedBidAmount !== null ? Math.max(0, confirmedBidAmount - amountPaid) : null;
 
-      return res.status(200).json({
-        success: true,
-        message: "Payment already processed",
-        amountPaid,
-        balanceAmount,
-      });
-    }
+    //   return res.status(200).json({
+    //     success: true,
+    //     message: "Payment already processed",
+    //     amountPaid,
+    //     balanceAmount,
+    //   });
+    // }
 
-    if (payment.phase !== "initial") {
-      return res.status(400).json({ success: false, message: "Payment phase mismatch" });
-    }
+    // if (payment.phase !== "initial") {
+    //   return res.status(400).json({ success: false, message: "Payment phase mismatch" });
+    // }
 
-    payment.status = "paid";
-    payment.razorpayPaymentId = razorpayPaymentId;
-    payment.paymentMode = "razorpay";
-    payment.paidAt = new Date();
-    await payment.save();
+    // payment.status = "paid";
+    // payment.razorpayPaymentId = razorpayPaymentId;
+    // payment.paymentMode = "razorpay";
+    // payment.paidAt = new Date();
+    // await payment.save();
 
-    const bid = await Bid.findById(bidId)
-      .populate({ path: "enquiry", populate: { path: "customer", model: "Customer" } })
-      .populate("inspector");
+    // const bid = await Bid.findById(bidId)
+    //   .populate({ path: "enquiry", populate: { path: "customer", model: "Customer" } })
+    //   .populate("inspector");
 
-    if (!bid || bid.status !== "active") {
-      return res.status(404).json({ success: false, message: "Bid not found or already confirmed" });
-    }
+    // if (!bid || bid.status !== "active") {
+    //   return res.status(404).json({ success: false, message: "Bid not found or already confirmed" });
+    // }
 
-    bid.status = "won";
-    await bid.save();
+    // bid.status = "won";
+    // await bid.save();
 
-    await Bid.updateMany(
-      { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
-      { $set: { status: "lost" } }
-    );
+    // await Bid.updateMany(
+    //   { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
+    //   { $set: { status: "lost" } }
+    // );
 
-    bid.enquiry.confirmedBid = bid._id;
-    bid.enquiry.status = "submitted";
-    bid.enquiry.currentPhase = "final";
-    bid.enquiry.paymentPhases = bid.enquiry.paymentPhases.map((p) =>
-      p.phase === "initial" ? { ...p, status: "paid", razorpayPaymentId } : p
-    );
-    await bid.enquiry.save();
+    // bid.enquiry.confirmedBid = bid._id;
+    // bid.enquiry.status = "submitted";
+    // bid.enquiry.currentPhase = "final";
+    // bid.enquiry.paymentPhases = bid.enquiry.paymentPhases.map((p) =>
+    //   p.phase === "initial" ? { ...p, status: "paid", razorpayPaymentId } : p
+    // );
+    // await bid.enquiry.save();
+
+
+    // at top of file ensure KEY_SECRET is defined (you already have it)
+const generatedSignature = crypto
+  .createHmac("sha256", KEY_SECRET)
+  .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+  .digest("hex");
+
+if (generatedSignature !== razorpaySignature) {
+  return res.status(400).json({ success: false, message: "Invalid Razorpay signature" });
+}
+
+const payment = await Payment.findById(paymentId);
+if (!payment) {
+  return res.status(404).json({ success: false, message: "Payment record not found" });
+}
+
+// If webhook already processed this payment, return success payload (idempotent)
+if (payment.status === "paid") {
+  const confirmedBid = await Bid.findById(bidId);
+  const confirmedBidAmount = confirmedBid?.customerViewAmount ?? null;
+  const amountPaid = payment.amount;
+  const balanceAmount = confirmedBidAmount !== null ? Math.max(0, confirmedBidAmount - amountPaid) : null;
+
+  return res.status(200).json({
+    success: true,
+    message: "Payment already processed",
+    amountPaid,
+    balanceAmount,
+  });
+}
+
+// Only proceed if phase matches
+if (payment.phase !== "initial") {
+  return res.status(400).json({ success: false, message: "Payment phase mismatch" });
+}
+
+// mark paid and update enquiry/bid same as webhook (or call a shared function)
+payment.status = "paid";
+payment.razorpayPaymentId = razorpayPaymentId;
+payment.paymentMode = "razorpay";
+payment.paidAt = new Date();
+await payment.save();
+
+// update bid/enquiry exactly like webhook does for initial phase
+const bid = await Bid.findById(bidId).populate({ path: "enquiry", populate: { path: "customer", model: "Customer" } }).populate("inspector");
+if (!bid || bid.status !== "active") {
+  return res.status(404).json({ success: false, message: "Bid not found or already confirmed" });
+}
+
+bid.status = "won";
+await bid.save();
+await Bid.updateMany(
+  { enquiry: bid.enquiry._id, _id: { $ne: bid._id }, status: "active" },
+  { $set: { status: "lost" } }
+);
+
+bid.enquiry.confirmedBid = bid._id;
+bid.enquiry.status = "submitted";
+bid.enquiry.currentPhase = "final";
+bid.enquiry.paymentPhases = bid.enquiry.paymentPhases.map((p) =>
+  p.phase === "initial" ? { ...p, status: "paid", razorpayPaymentId } : p
+);
+await bid.enquiry.save();
+
+
 
     const customer = bid.enquiry.customer;
     if (customer) {
@@ -318,7 +457,7 @@ const createFinalOrderForEnquiry = async (req, res, next) => {
       amount: amountInPaise,
       currency: enquiry.currency,
       receipt: `receipt_final_${enquiryId}`,
-      payment_capture: 1,
+      payment_capture: 0,
     });
 
     const payment = await Payment.create({

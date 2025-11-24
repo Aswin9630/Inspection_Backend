@@ -209,7 +209,7 @@ const verifyPayment = async (req, res) => {
   
 const webhookHandler = async (req, res) => {
   try {
-    const webhookSecret = process.env.RAZORPAY_TEST_WEBHOOK_SECRET;
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const payload = req.rawBody;
     const signature = req.headers["x-razorpay-signature"];
     if (!webhookSecret) {

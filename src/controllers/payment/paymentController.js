@@ -213,7 +213,7 @@ const webHooksController = async (req, res, next) => {
     const isWebhookValid = validateWebhookSignature(
       JSON.stringify(req.body),
       webhookSignature,
-      process.env.RAZORPAY_TEST_WEBHOOK_SECRET
+      process.env.RAZORPAY_WEBHOOK_SECRET
     );
 
     if (!isWebhookValid) {

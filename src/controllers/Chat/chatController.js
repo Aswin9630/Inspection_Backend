@@ -34,8 +34,7 @@ const getChatHistory = async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
-};
-
+}; 
 
 const getProgressLevel = async (req, res) => {
   try {
@@ -48,7 +47,6 @@ const getProgressLevel = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
 
 const getProgressForOrders = async (req, res) => {
   try {
@@ -66,7 +64,5 @@ const getProgressForOrders = async (req, res) => {
   }
 };
 
+module.exports = {getChatHistory,uploadMessageFile,getProgressLevel,getProgressForOrders}   
 
-
-
-module.exports = {getChatHistory,uploadMessageFile,getProgressLevel,getProgressForOrders}

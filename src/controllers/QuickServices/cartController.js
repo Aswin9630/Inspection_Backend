@@ -8,6 +8,12 @@ const QuickServicePayment = require("../../models/QuickService/QuickServicePayme
 const QuickServiceOrder = require("../../models/QuickService/QuickServiceOrder");
 const { sendPaymentNotification, sendEnquiryNotification } = require("../../utils/EmailServices/QuickServiceEmail/sender");
 
+
+const isProd = process.env.NODE_ENV === "production";
+const KEY_ID = isProd ? process.env.RAZORPAY_KEY_ID : process.env.RAZORPAY_TEST_KEY_ID;
+const WEBHOOK_SECRET = isProd ? process.env.RAZORPAY_WEBHOOK_SECRET : process.env.RAZORPAY_TEST_WEBHOOK_SECRET;
+const KEY_SECRET = isProd ? process.env.RAZORPAY_KEY_SECRET : process.env.RAZORPAY_TEST_KEY_SECRET;
+
 const TAX_RATES = {
   IN: 0.18,
   DEFAULT: 0.0,
@@ -30,6 +36,8 @@ function escapeRegex(s = "") {
 
 const createOrder = async (req, res) => {
   try {
+    console.log("req.body",req.body);
+    
     const user = req.user;
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
@@ -51,8 +59,8 @@ const createOrder = async (req, res) => {
       currency: order.currency,
       amount: order.amount,
       receipt: order.receipt,
-      notes: order.notes,
-      key: process.env.RAZORPAY_KEY_ID,
+      notes: order.notes, 
+      key:KEY_ID,
     });
   } catch (err) {
     console.error("createOrder error:", err);
@@ -73,7 +81,7 @@ const verifyPayment = async (req, res) => {
 
     const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", KEY_SECRET)
       .update(payload)
       .digest("hex");
 
@@ -209,7 +217,7 @@ const verifyPayment = async (req, res) => {
   
 const webhookHandler = async (req, res) => {
   try {
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const webhookSecret = WEBHOOK_SECRET;
     const payload = req.rawBody;
     const signature = req.headers["x-razorpay-signature"];
     if (!webhookSecret) {
@@ -300,30 +308,53 @@ const addToCart = async (req, res, next) => {
       country: new RegExp(`^${escapeRegex(countryNorm)}$`, "i"),
     });
 
-    const looksLikeIndia = String(countryNorm).toLowerCase().includes("india") || String(countryNorm).toLowerCase() === "in";
+    // const looksLikeIndia = String(countryNorm).toLowerCase().includes("india") || String(countryNorm).toLowerCase() === "in";
+    const looksLikeIndia = (() => {
+      const n = String(countryNorm || "").trim().toLowerCase();
+      if (!n) return false;
+      if (n === "in" || n === "india") return true;
+      if (n.includes("india")) return true;
+      return false;
+    })();
 
     let price = 0;
     let currency = "INR";
     let isEnquiry = true;
 
-    if (loc) {
-      if (!countryExists && !looksLikeIndia) {
-        price = 0;
-        currency = loc.currency || "INR";
-        isEnquiry = true;
-      } else {
-        price = loc.price;
-        currency = loc.currency || "INR";
-        isEnquiry = false;
-      }
+    // if (loc) {
+    //   if (!countryExists && !looksLikeIndia) {
+    //     price = 0;
+    //     currency = loc.currency || "INR";
+    //     isEnquiry = true;
+    //   } else {
+    //     price = loc.price;
+    //     currency = loc.currency || "INR";
+    //     isEnquiry = false;
+    //   }
+    // } else {
+    //   if (looksLikeIndia) {
+    //     price = 2500;
+    //     currency = "INR";
+    //     isEnquiry = false;
+    //   } else {
+    //     price = 0;
+    //     currency = "INR";
+    //     isEnquiry = true;
+    //   }
+    // }
+
+       if (loc) {
+      price = Number(loc.price || 0);
+      currency = loc.currency || (looksLikeIndia ? "INR" : "USD");
+      isEnquiry = !price || price <= 0;
     } else {
       if (looksLikeIndia) {
-        price = 2500;
+        price = 2500; 
         currency = "INR";
         isEnquiry = false;
       } else {
         price = 0;
-        currency = "INR";
+        currency = "USD"; 
         isEnquiry = true;
       }
     }
@@ -415,20 +446,69 @@ const deleteCartItem = async (req, res) => {
   }
 };
   
-const computeTotal = async (req, res) => {
+// const computeTotal = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     if (!user) return res.status(401).json({ error: "Unauthorized" });
+//     const items = await CartItem.find({ userId: user._id });
+//     if (!items.length) return res.status(200).json({ subtotal: 0, tax: 0, total: 0, currency: "INR" });
+
+//     const currency = items[0].currency || "INR";
+//     const subtotal = items.reduce((s, it) => s + (Number(it.price || 0)), 0);
+//     const taxRate = getTaxRateForCountry(items[0].country);
+//     const tax = +((subtotal * taxRate).toFixed(2));
+//     const total = +(subtotal + tax).toFixed(2);
+
+//     return res.status(200).json({ subtotal, tax, total, currency });
+//   } catch (err) {
+//     console.error("computeTotal error:", err);
+//     return res.status(500).json({ error: "Failed to compute totals" });
+//   }
+// };
+ 
+const computeTotal = async (req, res, next) => {
   try {
-    const user = req.user;
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const items = await CartItem.find({ userId: user._id });
-    if (!items.length) return res.status(200).json({ subtotal: 0, tax: 0, total: 0, currency: "INR" });
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const currency = items[0].currency || "INR";
-    const subtotal = items.reduce((s, it) => s + (Number(it.price || 0)), 0);
-    const taxRate = getTaxRateForCountry(items[0].country);
-    const tax = +((subtotal * taxRate).toFixed(2));
-    const total = +(subtotal + tax).toFixed(2);
+    const items = await CartItem.find({ userId }).lean();
 
-    return res.status(200).json({ subtotal, tax, total, currency });
+    // Sum per currency for priced items only
+    const totalsByCurrency = items.reduce((acc, it) => {
+      if (it.isEnquiry) return acc;
+      const cur = it.currency || "INR";
+      acc[cur] = (acc[cur] || 0) + Number(it.price || 0);
+      return acc;
+    }, {});
+
+    const currencies = Object.keys(totalsByCurrency);
+
+    // Choose display currency
+    let displayCurrency = "INR";
+    if (currencies.length === 0) {
+      displayCurrency = "INR";
+    } else if (currencies.length === 1) {
+      displayCurrency = currencies[0];
+    } else {
+      // mixed currencies: prefer INR, else USD, else first
+      displayCurrency = currencies.includes("INR")
+        ? "INR"
+        : currencies.includes("USD")
+        ? "USD"
+        : currencies[0];
+    }
+
+    const subtotal = Number(totalsByCurrency[displayCurrency] || 0);
+    // Example tax calc: 18% (adjust to your logic)
+    const tax = Math.round(subtotal * 0.18 * 100) / 100;
+    const total = Math.round((subtotal + tax) * 100) / 100;
+
+    return res.json({
+      subtotal,
+      tax,
+      total,
+      currency: displayCurrency,
+    });
   } catch (err) {
     console.error("computeTotal error:", err);
     return res.status(500).json({ error: "Failed to compute totals" });

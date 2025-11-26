@@ -4,11 +4,11 @@ const quickServiceOrderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "QuickServicePayment", required: true },
   razorpay_order_id: String,
-  status: { type: String, default: "paid" }, // paid | pending | cancelled | refunded
+  status: { type: String, default: "paid" }, 
   currency: String,
-  subtotal: Number, // main service total (in major units)
-  tax: Number,      // tax amount (major units)
-  total: Number,    // total amount charged (major units)
+  subtotal: Number, 
+  tax: Number,      
+  total: Number,   
   items: [
     {
       cartItemId: { type: mongoose.Schema.Types.ObjectId, ref: "CartItem" },

@@ -446,26 +446,7 @@ const deleteCartItem = async (req, res) => {
   }
 };
   
-// const computeTotal = async (req, res) => {
-//   try {
-//     const user = req.user;
-//     if (!user) return res.status(401).json({ error: "Unauthorized" });
-//     const items = await CartItem.find({ userId: user._id });
-//     if (!items.length) return res.status(200).json({ subtotal: 0, tax: 0, total: 0, currency: "INR" });
 
-//     const currency = items[0].currency || "INR";
-//     const subtotal = items.reduce((s, it) => s + (Number(it.price || 0)), 0);
-//     const taxRate = getTaxRateForCountry(items[0].country);
-//     const tax = +((subtotal * taxRate).toFixed(2));
-//     const total = +(subtotal + tax).toFixed(2);
-
-//     return res.status(200).json({ subtotal, tax, total, currency });
-//   } catch (err) {
-//     console.error("computeTotal error:", err);
-//     return res.status(500).json({ error: "Failed to compute totals" });
-//   }
-// };
- 
 const computeTotal = async (req, res, next) => {
   try {
     const userId = req.user?._id;
@@ -499,8 +480,12 @@ const computeTotal = async (req, res, next) => {
     }
 
     const subtotal = Number(totalsByCurrency[displayCurrency] || 0);
-    // Example tax calc: 18% (adjust to your logic)
-    const tax = Math.round(subtotal * 0.18 * 100) / 100;
+
+    // Decide tax rate based on country of first item
+    const firstCountry = items.find(it => !it.isEnquiry && it.currency === displayCurrency)?.country;
+    const taxRate = getTaxRateForCountry(firstCountry);
+
+    const tax = Math.round(subtotal * taxRate * 100) / 100;
     const total = Math.round((subtotal + tax) * 100) / 100;
 
     return res.json({
@@ -514,6 +499,7 @@ const computeTotal = async (req, res, next) => {
     return res.status(500).json({ error: "Failed to compute totals" });
   }
 };
+
   
 const markCartItemEnquiryRaised = async (req, res) => {
   try {

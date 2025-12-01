@@ -14,6 +14,7 @@ const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorL
 const chatRoutes = require("./routes/Chat/chatRouter");
 const locationPriceRoutes = require("./routes/QuickService/locationPriceRoutes");
 const quickServiceRoutes = require("./routes/QuickService/quickServiceRoutes");
+const chatBotRouter = require("./routes/chatBot/chatBotRouter");
 const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use("/quick-services",quickServicesRoutes)
 app.use("/admin/locations", adminLocationRoutes);
 app.use("/locationPrice", locationPriceRoutes);
 app.use("/quickService", quickServiceRoutes);
+app.use("/chatBot",chatBotRouter)
 
 const server = http.createServer(app)
 initializeSocket(server);

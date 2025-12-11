@@ -33,9 +33,9 @@ const signUpController = async (req, res, next) => {
           countryCode,
           mobileNumber,
           publishRequirements,
-          panNumber,
-          gstNumber,
-          wantsKyc,
+          // panNumber,
+          // gstNumber,
+          // wantsKyc,
         } = req.body;
 
         if (!name || !email || !password || !countryCode || !mobileNumber) {
@@ -173,8 +173,8 @@ const signUpController = async (req, res, next) => {
         websiteUrl,
         publishRequirements,
         certificates,
-        panNumber,
-        gstNumber
+        // panNumber,
+        // gstNumber
         } = req.body;
 
        if (!companyName  || !companyEmail || !password || !phoneNumber || !mobileNumber || !firstName || !lastName) {
@@ -208,9 +208,9 @@ const signUpController = async (req, res, next) => {
         publishRequirements: pub,
         certificates: parsedCertificates || [],
              documents: pub ? { incorporationCertificate, businessLicense: null } : undefined,
-        panNumber: panNumber || null,
-        gstNumber: gstNumber || null,
-        kycStatus: "none"
+        // panNumber: panNumber || null,
+        // gstNumber: gstNumber || null,
+        // kycStatus: "none"
       };
       
         break;

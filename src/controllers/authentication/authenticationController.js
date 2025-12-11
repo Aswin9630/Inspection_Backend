@@ -6,7 +6,7 @@ const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");
 const errorHandler = require("../../utils/errorHandler");
 const generateTokenAndCookie = require("../../middleware/generateTokenAndCookie");
-const { verifyPan, verifyGst } = require("../../config/sandboxClient");
+// const { verifyPan, verifyGst } = require("../../config/sandboxClient");
 
 const signUpController = async (req, res, next) => {
   try {
@@ -56,18 +56,18 @@ const signUpController = async (req, res, next) => {
           );
         }
 
-        let kycStatus = "none";
-        if (wantsKyc === "true" || wantsKyc === true) {
-          try {
-            await verifyPan(panNumber);
-            await verifyGst(gstNumber);
-            kycStatus = "verified";
-          } catch (e) {
-            return next(
-              errorHandler(400, e.message || "KYC verification failed")
-            );
-          }
-        }
+        // let kycStatus = "none";
+        // if (wantsKyc === "true" || wantsKyc === true) {
+        //   try {
+        //     await verifyPan(panNumber);
+        //     await verifyGst(gstNumber);
+        //     kycStatus = "verified";
+        //   } catch (e) {
+        //     return next(
+        //       errorHandler(400, e.message || "KYC verification failed")
+        //     );
+        //   }
+        // }
 
         userData = {
           name,
@@ -79,9 +79,9 @@ const signUpController = async (req, res, next) => {
           publishRequirements: publishRequirements === "true",
           documents,
           role,
-          panNumber: panNumber || null,
-          gstNumber: gstNumber || null,
-          kycStatus,
+          // panNumber: panNumber || null,
+          // gstNumber: gstNumber || null,
+          // kycStatus,
         };
         break;
       }

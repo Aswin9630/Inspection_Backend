@@ -28,7 +28,6 @@ const signUpValidation = () => {
       "customer",
       "inspector",
       "inspection_company",
-      "inspection company"
     ]),
 
     (req, res, next) => {
@@ -158,7 +157,7 @@ check("gstNumber")
         ];
       }
 
-if (role === "inspection company" || role === "inspection_company") {
+if (role === "inspection_company") {
   validations = [
     check("companyName", "Company name is required").isString().isLength({ min: 2 }),
     check("companyEmail", "Invalid email").isEmail(),
@@ -168,7 +167,7 @@ if (role === "inspection company" || role === "inspection_company") {
     check("firstName", "Contact first name is required").isString().isLength({ min: 1 }),
     check("lastName", "Contact last name is required").isString().isLength({ min: 1 }),
 
-    check("publishRequirements").optional().isBoolean(),
+    check("publishRequirements").optional().toBoolean().isBoolean(),
 
     body("licenseNumber").custom((val, { req }) => {
       const pub = req.body.publishRequirements === "true" || req.body.publishRequirements === true;

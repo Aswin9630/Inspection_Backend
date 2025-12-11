@@ -1,4 +1,4 @@
-const { check, validationResult } = require("express-validator");
+const { check,body, validationResult } = require("express-validator");
 
 const passwordRules = () =>
   check("password")
@@ -27,7 +27,8 @@ const signUpValidation = () => {
     check("role", "Role is required").isIn([
       "customer",
       "inspector",
-      "inspection company",
+      "inspection_company",
+      "inspection company"
     ]),
 
     (req, res, next) => {
@@ -69,6 +70,23 @@ const signUpValidation = () => {
               return true;
             }
           ),
+          check("wantsKyc").optional().isBoolean(),
+check("panNumber")
+  .optional()
+  .custom((val, { req }) => {
+    const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
+    if (wants && !val) throw new Error("PAN is required for KYC");
+    if (val && !/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(val)) throw new Error("Invalid PAN format");
+    return true;
+  }),
+check("gstNumber")
+  .optional()
+  .custom((val, { req }) => {
+    const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
+    if (wants && !val) throw new Error("GST is required for KYC");
+    if (val && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(val)) throw new Error("Invalid GST format");
+    return true;
+  }),
         ];
       }
 
@@ -140,83 +158,58 @@ const signUpValidation = () => {
         ];
       }
 
-      if (role === "inspection company") {
-        validations = [
-          check("contactPersonName", "Contact person name is required")
-            .isString()
-            .isLength({ min: 2 }),
-          emailRule("companyEmail"),
-          passwordRules(),
-          countryCodeRule(),
-          check("companyPhoneNumber", "Invalid company phone number").matches(
-            /^\d{6,15}$/
-          ),
-          mobileRule(),
-          check("companyName", "Company name is required")
-            .isString()
-            .isLength({ min: 2 }),
-          check(
-            "businessLicenseNumber",
-            "License number is required"
-          ).notEmpty(),
-          check("companyAddress", "Address is required").isLength({ min: 5 }),
-          check("website", "Invalid website URL").optional().isURL(),
-          check("yearEstablished", "Invalid year").isInt({
-            min: 1900,
-            max: new Date().getFullYear(),
-          }),
-          check("employeeCount", "Invalid employee count").isIn([
-            "1-10",
-            "11-50",
-            "51-200",
-            "201-500",
-            "500+",
-          ]),
-          check("servicesOffered", "Too long")
-            .optional()
-            .isLength({ max: 1000 }),
-          check(
-            "companyType",
-            "Company type must be 'indian' or 'international'"
-          ).isIn(["indian", "international"]),
-          check("gstNumber", "Invalid GST number")
-            .if(check("companyType").equals("indian"))
-            .matches(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/),
-          check("panNumber", "Invalid PAN number")
-            .if(check("companyType").equals("indian"))
-            .matches(/^[A-Z]{5}\d{4}[A-Z]{1}$/),
-          check("cinNumber", "Invalid CIN number")
-            .if(check("companyType").equals("indian"))
-            .matches(/^[A-Z]{1}\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/),
+if (role === "inspection company" || role === "inspection_company") {
+  validations = [
+    check("companyName", "Company name is required").isString().isLength({ min: 2 }),
+    check("companyEmail", "Invalid email").isEmail(),
+    passwordRules(),
+    check("phoneNumber", "Invalid company phone number").matches(/^\d{6,15}$/),
+    mobileRule("mobileNumber"),
+    check("firstName", "Contact first name is required").isString().isLength({ min: 1 }),
+    check("lastName", "Contact last name is required").isString().isLength({ min: 1 }),
 
-          check("documents.businessLicense").custom((value, { req }) => {
-            const fileExists = req.files?.businessLicense?.length > 0;
-            if (!fileExists) {
-              throw new Error("Business license document is required");
-            }
-            return true;
-          }),
+    check("publishRequirements").optional().isBoolean(),
 
-          check("documents.incorporationCertificate").custom(
-            (value, { req }) => {
-              const fileExists =
-                req.files?.incorporationCertificate?.length > 0;
-              if (!fileExists) {
-                throw new Error("Incorporation certificate is required");
-              }
-              return true;
-            }
-          ),
-
-          check("documents.insuranceDocument").custom((value, { req }) => {
-            const fileExists = req.files?.insuranceDocument?.length > 0;
-            if (!fileExists) {
-              throw new Error("Insurance document is required");
-            }
-            return true;
-          }),
-        ];
+    body("licenseNumber").custom((val, { req }) => {
+      const pub = req.body.publishRequirements === "true" || req.body.publishRequirements === true;
+      if (pub && (!val || String(val).trim().length < 16)) {
+        throw new Error("License number must be at least 16 characters");
       }
+      return true;
+    }),
+
+    body().custom((_, { req }) => {
+      const pub = req.body.publishRequirements === "true" || req.body.publishRequirements === true;
+      if (pub) {
+        const inc = req.files?.incorporationCertificate?.length > 0;
+        if (!inc) throw new Error("Incorporation certificate is required when publishing requirements");
+      }
+      return true;
+    }),
+
+check("websiteUrl")
+  .optional({ checkFalsy: true })
+  .matches(/^(https?:\/\/)?([\w-]+(\.[\w-]+)+)([\/\w .-]*)*\/?$/)
+  .withMessage("Invalid website URL"),
+
+
+    body("certificates").custom((val) => {
+      try {
+        const arr = typeof val === "string" ? JSON.parse(val) : val;
+        if (!Array.isArray(arr)) throw new Error("Certificates must be an array");
+        if (arr.length < 1) throw new Error("Please select at least one certificate");
+        if (arr.length > 5) throw new Error("You can only select up to 5 certificates");
+        return true;
+      } catch (e) {
+        throw new Error(e.message || "Invalid certificates payload");
+      }
+    }),
+
+    check("panNumber").optional().matches(/^[A-Z]{5}\d{4}[A-Z]{1}$/).withMessage("Invalid PAN number"),
+    check("gstNumber").optional().matches(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/).withMessage("Invalid GST number")
+  ];
+}
+
 
       Promise.all(validations.map((validation) => validation.run(req)))
         .then(() => next())
@@ -232,13 +225,36 @@ const signInValidation = () => [
   }),
 ];
 
+// const handleValidationErrors = (req, res, next) => {
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Validation failed",
+//       errors: errors.array(),
+//     });
+//   }
+//   next();
+// };
+
 const handleValidationErrors = (req, res, next) => {
+  if (req.files) {
+    const filesSummary = Object.keys(req.files).reduce((acc, key) => {
+      acc[key] = req.files[key].map((f) => ({ originalname: f.originalname, fieldname: f.fieldname, size: f.size }));
+      return acc;
+    }, {});
+  } else {
+    console.log("Files: none");
+  }
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const errorArray = errors.array();
+    const first = errorArray[0];
     return res.status(400).json({
       success: false,
-      message: "Validation failed",
-      errors: errors.array(),
+      message: first.msg || "Validation failed",
+      errors: errorArray,
     });
   }
   next();

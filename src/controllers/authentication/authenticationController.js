@@ -1,17 +1,18 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const {sendVerificationEmail} = require("../../utils/sendVerificationEmail");
+const { sendVerificationEmail } = require("../../utils/sendVerificationEmail");
 const Customer = require("../../models/Customer/customerModel");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");
 const errorHandler = require("../../utils/errorHandler");
 const generateTokenAndCookie = require("../../middleware/generateTokenAndCookie");
+const { verifyPan, verifyGst } = require("../../config/sandboxClient");
 
 const signUpController = async (req, res, next) => {
   try {
     const { role } = req.body;
 
-    const validRoles = ["customer", "inspector", "inspection company"];
+    const validRoles = ["customer", "inspector",  "inspection_company"];
     if (!role || !validRoles.includes(role)) {
       return next(
         errorHandler(
@@ -32,6 +33,9 @@ const signUpController = async (req, res, next) => {
           countryCode,
           mobileNumber,
           publishRequirements,
+          panNumber,
+          gstNumber,
+          wantsKyc,
         } = req.body;
 
         if (!name || !email || !password || !countryCode || !mobileNumber) {
@@ -52,6 +56,19 @@ const signUpController = async (req, res, next) => {
           );
         }
 
+        let kycStatus = "none";
+        if (wantsKyc === "true" || wantsKyc === true) {
+          try {
+            await verifyPan(panNumber);
+            await verifyGst(gstNumber);
+            kycStatus = "verified";
+          } catch (e) {
+            return next(
+              errorHandler(400, e.message || "KYC verification failed")
+            );
+          }
+        }
+
         userData = {
           name,
           email,
@@ -62,6 +79,9 @@ const signUpController = async (req, res, next) => {
           publishRequirements: publishRequirements === "true",
           documents,
           role,
+          panNumber: panNumber || null,
+          gstNumber: gstNumber || null,
+          kycStatus,
         };
         break;
       }
@@ -140,92 +160,59 @@ const signUpController = async (req, res, next) => {
         break;
       }
 
-      case "inspection company": {
+      case "inspection_company": {
         const {
-          contactPersonName,
-          companyEmail,
-          password,
-          countryCode,
-          companyPhoneNumber,
-          mobileNumber,
           companyName,
-          businessLicenseNumber,
-          companyAddress,
-          website,
-          yearEstablished,
-          employeeCount,
-          servicesOffered,
-          companyType,
-          gstNumber,
-          panNumber,
-          cinNumber,
-          msmeNumber,
+        companyEmail,
+        firstName,
+        lastName,
+        password,
+        phoneNumber,
+        mobileNumber,
+        licenseNumber,
+        websiteUrl,
+        publishRequirements,
+        certificates,
+        panNumber,
+        gstNumber
         } = req.body;
 
-        if (
-          !contactPersonName ||
-          !companyEmail ||
-          !password ||
-          !countryCode ||
-          !companyPhoneNumber ||
-          !mobileNumber ||
-          !companyName ||
-          !businessLicenseNumber ||
-          !companyAddress ||
-          !yearEstablished ||
-          !employeeCount ||
-          !companyType
-        ) {
-          return next(errorHandler(400, "Missing required company fields"));
-        }
+       if (!companyName  || !companyEmail || !password || !phoneNumber || !mobileNumber || !firstName || !lastName) {
+        return next(errorHandler(400, "Missing required company fields"));
+      }
 
-        const documents = {
-          businessLicense: req.files?.businessLicense?.[0]?.path || null,
-          incorporationCertificate:
-            req.files?.incorporationCertificate?.[0]?.path || null,
-          insuranceDocument: req.files?.insuranceDocument?.[0]?.path || null,
-        };
-        if (
-          !documents.businessLicense ||
-          !documents.incorporationCertificate ||
-          !documents.insuranceDocument
-        ) {
-          return next(errorHandler(400, "Missing required company documents"));
-        }
+             const incorporationCertificate = req.files?.incorporationCertificate?.[0]?.path || null;
+  const pub = publishRequirements === "true" || publishRequirements === true;
+  if (pub && (!licenseNumber || !incorporationCertificate)) {
+    return next(errorHandler(400, "License number and incorporation certificate are required when publishing requirements"));
+  }
 
-        if (
-          companyType === "indian" &&
-          (!gstNumber || !panNumber || !cinNumber)
-        ) {
-          return next(
-            errorHandler(400, "Indian company must provide GST, PAN, and CIN")
-          );
-        }
+      let parsedCertificates = [];
+      try {
+        parsedCertificates = typeof certificates === "string" ? JSON.parse(certificates) : (certificates || []);
+      } catch (e) {
+        parsedCertificates = [];
+      }
 
-        userData = {
-          contactPersonName,
-          companyEmail,
-          password,
-          countryCode,
-          companyPhoneNumber,
-          mobileNumber,
-          companyName,
-          businessLicenseNumber,
-          companyAddress,
-          website,
-          yearEstablished,
-          employeeCount,
-          servicesOffered: Array.isArray(servicesOffered)
-            ? servicesOffered
-            : [servicesOffered],
-          companyType,
-          gstNumber,
-          panNumber,
-          cinNumber,
-          msmeNumber,
-          documents,
-          role,
-        };
+           userData = {
+        role: "inspection_company",
+        companyName,
+        phoneNumber,
+        mobileNumber,
+        companyEmail,
+        password,
+        firstName,
+        lastName,
+        licenseNumber: pub ? licenseNumber || null : null,
+        websiteUrl: websiteUrl || null,
+        publishRequirements: pub,
+        certificates: parsedCertificates || [],
+             documents: pub ? { incorporationCertificate, businessLicense: null } : undefined,
+        panNumber: panNumber || null,
+        gstNumber: gstNumber || null,
+        kycStatus: "none"
+      };
+      
         break;
       }
     }
@@ -237,9 +224,15 @@ const signUpController = async (req, res, next) => {
         ? Inspector
         : InspectionCompany;
 
-    const emailField = role === "inspection company" ? "companyEmail" : "email";
+    const emailField = role === "inspection_company" ? "companyEmail" : "email";
+    const emailValue = userData[emailField];
+
+     if (!emailValue) {
+      return next(errorHandler(400, "Email is required"));
+    }
+
     const emailExist = await Model.findOne({
-      [emailField]: userData[emailField],
+      [emailField]:emailValue
     });
     if (emailExist) return next(errorHandler(400, "Email already exists"));
 
@@ -253,56 +246,100 @@ const signUpController = async (req, res, next) => {
 
     const newUser = await Model.create(userData);
 
+        const displayName = userData.companyName || userData.name || `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || "User";
     await sendVerificationEmail(
-      userData[emailField],
-      userData.name || userData.contactPersonName,
-      token,
-      role
+      emailValue, displayName, token, role
     );
- 
+
     const { password: _ignored, ...userDetails } = newUser._doc;
 
     return res.status(201).json({
       success: true,
-      message: "Signup successful. Please verify your email to activate your account.",
+      message:
+        "Signup successful. Please verify your email to activate your account.",
       user: userDetails,
     });
-
   } catch (error) {
     return next(errorHandler(500, error.message));
   }
 };
 
+// const signInController = async (req, res, next) => {
+//   try {
+//     const { role, email, password } = req.body;
+
+//     const validRoles = ["customer", "inspector", "inspection_company"];
+//     if (!role || !validRoles.includes(role)) {
+//       return next(
+//         errorHandler(
+//           400,
+//           "Invalid role. Must be customer, inspector, or inspection company."
+//         )
+//       );
+//     }
+
+//     if (!email || !password) {
+//       return next(errorHandler(400, "Email and password are required"));
+//     }
+
+//     const Model =
+//       role === "customer"
+//         ? Customer
+//         : role === "inspector"
+//         ? Inspector
+//         : InspectionCompany;
+
+//     const emailField = role === "inspection company" ? "companyEmail" : "email";
+
+//     const user = await Model.findOne({ [emailField]: email }).select(
+//       "+password"
+//     );
+//     if (!user) return next(errorHandler(401, "Invalid credentials"));
+
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) return next(errorHandler(401, "Invalid credentials"));
+
+//     if (!user.isVerified) {
+//       return next(
+//         errorHandler(403, "Please verify your email before signing in")
+//       );
+//     }
+
+//     token = generateTokenAndCookie(res, user);
+
+//     const { password: _ignored, ...userDetails } = user._doc;
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Signin successful",
+//       user: userDetails,
+//       token,
+//     });
+//   } catch (error) {
+//     return next(errorHandler(500, error.message));
+//   }
+// };
+
 const signInController = async (req, res, next) => {
   try {
     const { role, email, password } = req.body;
 
-    const validRoles = ["customer", "inspector", "inspection company"];
+    const validRoles = ["customer", "inspector", "inspection_company"];
     if (!role || !validRoles.includes(role)) {
-      return next(
-        errorHandler(
-          400,
-          "Invalid role. Must be customer, inspector, or inspection company."
-        )
-      );
+      return next(errorHandler(400, "Invalid role. Must be customer, inspector, or inspection_company."));
     }
 
     if (!email || !password) {
       return next(errorHandler(400, "Email and password are required"));
     }
 
-    const Model =
-      role === "customer"
-        ? Customer
-        : role === "inspector"
-        ? Inspector
-        : InspectionCompany;
+    // pick model by canonical role
+    const Model = role === "customer" ? Customer : role === "inspector" ? Inspector : InspectionCompany;
 
-    const emailField = role === "inspection company" ? "companyEmail" : "email";
+    // use companyEmail for inspection_company, otherwise email
+    const emailField = role === "inspection_company" ? "companyEmail" : "email";
 
-    const user = await Model.findOne({ [emailField]: email }).select(
-      "+password"
-    );
+    const user = await Model.findOne({ [emailField]: email }).select("+password");
     if (!user) return next(errorHandler(401, "Invalid credentials"));
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -312,7 +349,7 @@ const signInController = async (req, res, next) => {
       return next(errorHandler(403, "Please verify your email before signing in"));
     }
 
-    token = generateTokenAndCookie(res, user);
+    const token = generateTokenAndCookie(res, user);
 
     const { password: _ignored, ...userDetails } = user._doc;
 
@@ -365,10 +402,16 @@ const getUserProfileController = async (req, res, next) => {
 
 const findNameById = async (id) => {
   let u = await Customer.findById(id).select("name email").lean();
-  if (u) return { displayName: u.name || u.email || null, role: "customer", raw: u };
+  if (u)
+    return { displayName: u.name || u.email || null, role: "customer", raw: u };
 
   u = await Inspector.findById(id).select("name email").lean();
-  if (u) return { displayName: u.name || u.email || null, role: "inspector", raw: u };
+  if (u)
+    return {
+      displayName: u.name || u.email || null,
+      role: "inspector",
+      raw: u,
+    };
 
   return null;
 };
@@ -401,5 +444,5 @@ module.exports = {
   signUpController,
   logoutController,
   getUserProfileController,
-  getUserById
+  getUserById,
 };

@@ -5,6 +5,7 @@ const InspectionCompany = require("../../models/InspectionCompany/inspectionComp
 const verifyEmailController = async (req, res, next) => {
   try {
     const { token, role } = req.query;
+    if (!token) return res.status(400).send("Missing token");
 
     const Model =
       role === "customer"
@@ -13,17 +14,19 @@ const verifyEmailController = async (req, res, next) => {
         ? Inspector
         : InspectionCompany;
 
-    const user = await Model.findOne({
-      emailVerificationToken: token,
-      verificationExpires: { $gt: Date.now() },
-    });
+       const updated = await Model.findOneAndUpdate(
+      {
+        emailVerificationToken: token,
+        verificationExpires: { $gt: Date.now() },
+      },
+      {
+        $set: { isVerified: true },
+        $unset: { emailVerificationToken: "", verificationExpires: "" },
+      },
+      { new: true, runValidators: false } 
+    );
 
-    if (!user) return res.status(400).send("Invalid or expired token");
-
-    user.isVerified = true;
-    user.emailVerificationToken = undefined;
-    user.verificationExpires = undefined;
-    await user.save();
+    if (!updated) return res.status(400).send("Invalid or expired token");
     res.send("✅ Email verified! You can now log in.");
   } catch (error) {
     next(error);

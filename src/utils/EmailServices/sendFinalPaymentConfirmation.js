@@ -4,11 +4,11 @@ const sendFinalPaymentConfirmation = async (customer, enquiry, payment, opts = {
   const formattedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   const logoUrl = "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
 
-  const inspectorName = enquiry?.inspector?.name ||" ";
-  const commodity = enquiry?.category || "N/A";
-  const subCommodity = enquiry?.commodity || "";
-  const location = enquiry?.location || "N/A";
-  const country = enquiry?.country || "N/A";
+  const inspectorName = enquiry?.enquiry.inspector?.name ||" ";
+  const commodity = enquiry?.enquiry.category || "N/A";
+  const subCommodity = enquiry?.enquiry.commodity || "";
+  const location = enquiry?.enquiry.location || "N/A";
+  const country = enquiry?.enquiry.country || "N/A";
 
   const paidAmount = payment.amount || 0;
   const totalPaid = opts.totalPaid ?? paidAmount;

@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const ParticipantSchema = new Schema({
   role: {
     type: String,
-    enum: ["customer", "inspector", "admin"],
+    enum: ["customer", "inspector","inspection_company" , "admin"],
     required: true,
   },
   refId: {

@@ -34,9 +34,7 @@ router.post(
 router.post(
   "/signup/inspectionCompany",
   companyUploader.fields([
-    { name: "businessLicense", maxCount: 1 },
-    { name: "incorporationCertificate", maxCount: 1 },
-    { name: "insuranceDocument", maxCount: 1 },
+    { name: "incorporationCertificate", maxCount: 1 }
   ]),
   signUpValidation(),
   handleValidationErrors,

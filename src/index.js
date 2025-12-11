@@ -15,6 +15,8 @@ const chatRoutes = require("./routes/Chat/chatRouter");
 const locationPriceRoutes = require("./routes/QuickService/locationPriceRoutes");
 const quickServiceRoutes = require("./routes/QuickService/quickServiceRoutes");
 const chatBotRouter = require("./routes/chatBot/chatBotRouter");
+const inspectionCompanyRoutes = require("./routes/inspectionCompany/inspectionCompanyRouter");
+const kycRoutes = require("./routes/KYC/kycRouter");
 const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
@@ -36,13 +38,14 @@ app.use(cookieParser());
 
 app.get("/test",(req,res)=>{ 
   res.json({message:"Testing APIs"}) 
-});
+}); 
 app.use("/auth",authRoutes);
+app.use("/kyc", kycRoutes);
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes); 
+app.use("/inspectionCompany", inspectionCompanyRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/chat", chatRoutes);
-// app.use("/newChat", newChatRoutes);
 app.use("/quick-services",quickServicesRoutes)
 app.use("/admin/locations", adminLocationRoutes);
 app.use("/locationPrice", locationPriceRoutes);

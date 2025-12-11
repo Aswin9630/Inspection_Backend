@@ -2,6 +2,7 @@ const InspectionEnquiry = require("../../models/Customer/newCustomerEnquiryForm"
 const Payment = require("../../models/Payment/paymentModel");
 const Customer = require("../../models/Customer/customerModel");
 const Bid = require("../../models/Inspector/bidModel");
+const CompanyBid = require("../../models/InspectionCompany/companyBid");
 const errorHandler = require("../../utils/errorHandler");
 const sendEnquiryNotification = require("../../utils/EmailServices/sendEnquiryNotification");
 const sendCustomerEnquiryConfirmation = require("../../utils/EmailServices/sendCustomerEnquiryConfirmation");
@@ -185,6 +186,56 @@ const cancelEnquiry = async (req, res, next) => {
   }
 };
 
+// const getBidsForEnquiry = async (req, res, next) => {
+//   try {
+//     const enquiry = await InspectionEnquiry.findById(req.params.enquiryId);
+//     if (!enquiry || enquiry.customer.toString() !== req.user._id.toString()) {
+//       return next(errorHandler(403, "Unauthorized or enquiry not found"));
+//     }
+
+//     const bids = await Bid.find({ enquiry: enquiry._id, status: { $in: ["active", "won"] } })
+//       .populate("inspector", "name company rating inspectionsCount");
+
+//        const companyBids = await CompanyBid.find({
+//       enquiry: enquiry._id,
+//       status: { $in: ["active", "won"] },
+//     }).populate("inspectionCompany", "companyName companyEmail phoneNumber certificates");
+
+//      const allBids = [
+//       ...bids.map((b) => ({
+//         ...b.toObject(),
+//         bidderType: "inspector",
+//       })),
+//       ...companyBids.map((b) => ({
+//         ...b.toObject(),
+//         bidderType: "company",
+//       })),
+//     ];
+
+//     const viewAmounts = allBids.map((b) => b.customerViewAmount);
+//     const stats = {
+//       lowestBid: Math.min(...viewAmounts),
+//       highestBid: Math.max(...viewAmounts),
+//       averageBid: viewAmounts.reduce((a, b) => a + b, 0) / viewAmounts.length,
+//       totalBids: bids.length,
+//     };
+
+//     res.json({
+//       success: true,
+//       bids:allBids,
+//       stats,
+//       enquiry: {
+//         status: enquiry.status,
+//         currentPhase: enquiry.currentPhase,
+//         _id: enquiry._id,
+//         currency:enquiry.currency
+//       },
+//     });
+//   } catch (error) {
+//     next(errorHandler(500, "Failed to fetch bids: " + error.message));
+//   }
+// };
+
 const getBidsForEnquiry = async (req, res, next) => {
   try {
     const enquiry = await InspectionEnquiry.findById(req.params.enquiryId);
@@ -192,26 +243,50 @@ const getBidsForEnquiry = async (req, res, next) => {
       return next(errorHandler(403, "Unauthorized or enquiry not found"));
     }
 
-    const bids = await Bid.find({ enquiry: enquiry._id, status: { $in: ["active", "won"] } })
-      .populate("inspector", "name company rating inspectionsCount");
+    const inspectorBids = await Bid.find({
+      enquiry: enquiry._id,
+      status: { $in: ["active", "won"] }
+    }).populate("inspector", "name company rating inspectionsCount");
 
-    const viewAmounts = bids.map((b) => b.customerViewAmount);
-    const stats = {
-      lowestBid: Math.min(...viewAmounts),
-      highestBid: Math.max(...viewAmounts),
-      averageBid: viewAmounts.reduce((a, b) => a + b, 0) / viewAmounts.length,
-      totalBids: bids.length,
-    };
+
+
+    const companyBids = await CompanyBid.find({
+      enquiry: enquiry._id,
+      status: { $in: ["active", "won"] }
+    }).populate("inspectionCompany", "companyName companyEmail phoneNumber certificates");
+
+
+    const allBids = [ 
+      ...inspectorBids.map((b) => ({
+        ...b.toObject(),
+        bidderType: "inspector",
+      })),
+      ...companyBids.map((b) => ({
+        ...b.toObject(),
+        bidderType: "company",
+      })),
+    ];
+
+    const viewAmounts = allBids.map((b) => b.customerViewAmount);
+    const stats =
+      viewAmounts.length > 0
+        ? {
+            lowestBid: Math.min(...viewAmounts),
+            highestBid: Math.max(...viewAmounts),
+            averageBid: viewAmounts.reduce((a, b) => a + b, 0) / viewAmounts.length,
+            totalBids: allBids.length,
+          }
+        : { lowestBid: null, highestBid: null, averageBid: null, totalBids: 0 };
 
     res.json({
       success: true,
-      bids,
+      bids: allBids,
       stats,
       enquiry: {
         status: enquiry.status,
         currentPhase: enquiry.currentPhase,
         _id: enquiry._id,
-        currency:enquiry.currency
+        currency: enquiry.currency,
       },
     });
   } catch (error) {
@@ -402,7 +477,7 @@ const getWonInspectors = async (req, res, next) => {
   try {
     const customerId = req.user._id;
 
-    const wonBids = await Bid.find({ status: "won" })
+    const wonInspectorBids = await Bid.find({ status: "won" })
       .populate({
         path: "enquiry",
         match: { customer: customerId },
@@ -410,36 +485,70 @@ const getWonInspectors = async (req, res, next) => {
       })
       .populate("inspector", "name email mobileNumber");
 
-    const validBids = wonBids.filter((bid) => bid.enquiry);
+       const wonCompanyBids = await CompanyBid.find({ status: "won" })
+      .populate({
+        path: "enquiry",
+        match: { customer: customerId },
+        select: "commodity",
+      })
+      .populate("inspectionCompany", "companyName companyEmail phoneNumber");
 
-    const inspectors = [];
+      const validInspectorBids = wonInspectorBids.filter((b) => b.enquiry);
+    const validCompanyBids = wonCompanyBids.filter((b) => b.enquiry);
 
-    for (const bid of validBids) {
+    const participants  = [];
+
+     for (const bid of validInspectorBids) {
       const inspector = bid.inspector;
       const enquiry = bid.enquiry;
+      if (!inspector || !enquiry) continue;
 
-      if (inspector && enquiry) {
-        const initialPayment = await Payment.findOne({
-          enquiry: enquiry._id,
-          phase: "initial",
-          status: "paid",
-        });
+      const initialPayment = await Payment.findOne({
+        enquiry: enquiry._id,
+        phase: "initial",
+        status: "paid",
+      }).lean();
 
-        inspectors.push({
-          id: inspector._id,
-          name: inspector.name,
-          email: inspector.email,
-          mobileNumber: inspector.mobileNumber,
-          commodity: enquiry.commodity,
-          orderId: initialPayment?.razorpayOrderId || "Not available",
-          amount: initialPayment?.amount || 0,
-        });
-      }
+      participants.push({
+        id: String(inspector._id),
+        name: inspector.name || "Inspector",
+        email: inspector.email || null,
+        mobileNumber: inspector.mobileNumber || null,
+        commodity: enquiry.commodity || null,
+        orderId: initialPayment?.razorpayOrderId || `order_${String(enquiry._id)}`,
+        amount: initialPayment?.amount || 0,
+        type: "inspector",
+      });
     }
+
+     for (const bid of validCompanyBids) {
+      const company = bid.inspectionCompany;
+      const enquiry = bid.enquiry;
+      if (!company || !enquiry) continue;
+
+      const initialPayment = await Payment.findOne({
+        enquiry: enquiry._id,
+        phase: "initial",
+        status: "paid",
+      }).lean();
+
+      participants.push({
+        id: String(company._id),
+        name: company.companyName || company.name || "Inspection Company",
+        email: company.companyEmail || null,
+        mobileNumber: company.phoneNumber || null,
+        commodity: enquiry.commodity || null,
+        orderId: initialPayment?.razorpayOrderId || `order_${String(enquiry._id)}`,
+        amount: initialPayment?.amount || 0,
+        type: "company",
+      });
+    }
+
+        participants.sort((a, b) => (String(a.name || "").localeCompare(String(b.name || ""))));
 
     res.status(200).json({
       success: true,
-      inspectors,
+      inspectors:participants,
     });
   } catch (error) {
     next({

@@ -300,11 +300,8 @@ const getCompanyAnalytics = async (req, res, next) => {
       .populate("enquiry")
       .sort({ createdAt: -1 });
 
-      console.log("allBids",allBids)
     const wonBids = allBids.filter((bid) => bid.status === "won");
-      console.log("wonBids",wonBids)
     const totalEarnings = wonBids.reduce((sum, bid) => sum + (bid.amount || 0), 0);
-      console.log("totalEarnings",totalEarnings)
 
     const totalBids = allBids.length;
     const winRate = totalBids > 0 ? ((wonBids.length / totalBids) * 100).toFixed(2) : "0.00";

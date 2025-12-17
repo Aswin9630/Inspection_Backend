@@ -184,7 +184,7 @@ const signUpController = async (req, res, next) => {
              const incorporationCertificate = req.files?.incorporationCertificate?.[0]?.path || null;
   const pub = publishRequirements === "true" || publishRequirements === true;
   if (pub && (!licenseNumber || !incorporationCertificate)) {
-    return next(errorHandler(400, "License number and incorporation certificate are required when publishing requirements"));
+    return next(errorHandler(400, "License number and legal certificate are required when publishing requirements"));
   }
 
       let parsedCertificates = [];

@@ -171,8 +171,8 @@ if (role === "inspection_company") {
 
     body("licenseNumber").custom((val, { req }) => {
       const pub = req.body.publishRequirements === "true" || req.body.publishRequirements === true;
-      if (pub && (!val || String(val).trim().length < 16)) {
-        throw new Error("License number must be at least 16 characters");
+      if (pub && (!val || String(val).trim().length < 6)) {
+        throw new Error("License number must be at least 6 characters");
       }
       return true;
     }),

@@ -72,7 +72,7 @@ const inspectionCompanySchema = new mongoose.Schema(
       required: function () {
         return this.publishRequirements;
       },
-      minlength: 16,
+      minlength: 6,
       maxlength: 64,
       match: [/^[A-Za-z0-9-\s]+$/, "License uses letters, numbers, spaces, or hyphens"]
     },

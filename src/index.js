@@ -18,11 +18,12 @@ const chatBotRouter = require("./routes/chatBot/chatBotRouter");
 const inspectionCompanyRoutes = require("./routes/inspectionCompany/inspectionCompanyRouter");
 // const kycRoutes = require("./routes/KYC/kycRouter");
 const contactRoutes = require("./routes/Home/contactRoutes");
+const webinarRoutes = require("./routes/Webinar/webinarRoutes");
 const initializeSocket = require("./utils/socket");
 
 const PORT = process.env.PORT || 3000;
 const app = express();
-  
+   
 app.use(cors({
   origin:process.env.FRONTEND_URL,
   methods:["GET","POST","PATCH","PUT","DELETE"],
@@ -53,6 +54,7 @@ app.use("/locationPrice", locationPriceRoutes);
 app.use("/quickService", quickServiceRoutes);
 app.use("/chatBot",chatBotRouter)
 app.use("/contact",contactRoutes)
+app.use("/webinar", webinarRoutes);
 
 const server = http.createServer(app)
 initializeSocket(server);

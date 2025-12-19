@@ -17,7 +17,7 @@ const {
 
 const customerUploader = createUploader("customers");
 
-router.post("/raise-enquiry", verifyUser, raiseEnquiryController);
+router.post("/raise-enquiry", verifyUser,  customerUploader.fields([{ name: "attachment", maxCount: 1 }]), raiseEnquiryController);
 router.get("/my-enquiries", verifyUser, getMyEnquiries);
 router.get("/raiseEnquiry/:id/details", verifyUser, getEnquiryDetails);
 router.get("/bids/:enquiryId", verifyUser, getBidsForEnquiry);

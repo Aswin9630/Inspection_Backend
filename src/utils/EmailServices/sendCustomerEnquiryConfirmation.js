@@ -1,4 +1,5 @@
 const { transporter } = require("../sendVerificationEmail");
+const { buildAttachments, escapeHtml } = require("./emailUtils");
 
 const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
   const {
@@ -13,7 +14,9 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
     dateFrom,
     dateTo,
     _id,
-    currency
+    currency,
+    otherRequirements,
+      attachmentUrl,
   } = enquiry; 
               
   const currencySymbol = currency === "USD" ? "$" : "₹";
@@ -28,6 +31,8 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
 
   const formattedTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   const logoUrl = "https://qualty.ai/assets/QualtyLogo-BQfT8ydk.png";
+
+  const safeOther = otherRequirements ? escapeHtml(otherRequirements) : "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #111; background: #fff; padding: 24px; max-width: 720px; margin: auto; border: 1px solid #e6e6e6;">
@@ -53,6 +58,21 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
         <p><strong>Urgency Level:</strong> ${urgency}</p>
         <p><strong>Inspection Window:</strong> ${formattedFromDate} to ${formattedToDate}</p>
       </div>
+
+         ${safeOther ? `
+          <div style="margin-top:12px;font-size:13px;color:#444">
+            <p><strong>Additional Requirements:</strong></p>
+            <div style="background:#fafafa;padding:10px;border-radius:6px;border:1px solid #eee;color:#333;white-space:pre-wrap;">
+              ${safeOther}
+            </div>
+          </div>
+        ` : ""}
+ 
+        ${attachmentUrl ? `
+          <div style="margin-top:12px;font-size:13px;color:#444">
+            <p><strong>Attached file:</strong> ${/^https?:\/\//i.test(attachmentUrl) ? `<a href="${escapeHtml(attachmentUrl)}" target="_blank" rel="noopener noreferrer">Download</a>` : escapeHtml(attachmentUrl)}</p>
+          </div>
+        ` : ""}
 
       <div style="padding:14px;border:1px solid #f0f0f0;border-radius:8px;margin-top:12px;background:#fafafa">
         <div style="font-weight:700;margin-bottom:8px">Budget Summary</div>
@@ -85,11 +105,13 @@ const sendCustomerEnquiryConfirmation = async (customer, enquiry) => {
     </div>
   `;
 
+  const attachments = buildAttachments(attachmentUrl);
   await transporter.sendMail({
     from: `"Qualty.ai" <${process.env.EMAIL_USER}>`,
     to: customer.email,
     subject: "Inspection Enquiry Confirmation - Qualty.ai",
     html,
+    attachments
   });
 };
 

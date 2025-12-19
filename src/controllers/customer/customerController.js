@@ -7,7 +7,6 @@ const errorHandler = require("../../utils/errorHandler");
 const sendEnquiryNotification = require("../../utils/EmailServices/sendEnquiryNotification");
 const sendCustomerEnquiryConfirmation = require("../../utils/EmailServices/sendCustomerEnquiryConfirmation");
 
-
 function countryLooksLikeIndia(countryStr) {
   if (!countryStr) return false;
   const c = String(countryStr).trim().toLowerCase();
@@ -56,7 +55,9 @@ const raiseEnquiryController = async (req, res, next) => {
       services,
       certifications,
       selectionSummary,
+      otherRequirements
     } = req.body;
+     const attachmentFile = req.files?.attachment?.[0] || null;
 
     if (!physicalInspection && !chemicalInspection) {
       return next(errorHandler(400, "Select at least one inspection type"));
@@ -120,6 +121,8 @@ const urgencyEnum = allowedUrgency.includes(urgency) ? urgency : "Medium";
         { phase: "inspection", amount: Math.round(budgetVal * 0.2), status: "pending" },
         { phase: "final", amount: Math.round(budgetVal * 0.5), status: "pending" },
       ],
+         otherRequirements: otherRequirements || "",
+      attachmentUrl: attachmentFile ? attachmentFile.path : null,
     };
 
     const newEnquiry = await InspectionEnquiry.create(enquiryData);
@@ -374,7 +377,6 @@ const updateCustomerDocumentsController = async (req, res, next) => {
     next(errorHandler(500, "Failed to update documents: " + error.message));
   }
 };
-
 
 const getCustomerPayments = async (req, res, next) => {
   try {

@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const { sendVerificationEmail } = require("../../utils/sendVerificationEmail");
+const { sendVerificationEmail,transporter } = require("../../utils/sendVerificationEmail");
 const Customer = require("../../models/Customer/customerModel");
 const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");
@@ -439,10 +439,84 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+
+const getModelByRole = (role) => {
+  if (role === "customer") return Customer;
+  if (role === "inspector") return Inspector;
+  if (role === "inspection_company") return InspectionCompany;
+  return null;
+};
+
+const forgotPasswordController = async (req, res, next) => {
+  try {
+    const { role, email } = req.body;
+    if (!role || !email) return next(errorHandler(400, "Role and email required"));
+
+    const Model = getModelByRole(role);
+    if (!Model) return next(errorHandler(400, "Invalid role"));
+
+    const emailField = role === "inspection_company" ? "companyEmail" : "email";
+    const user = await Model.findOne({ [emailField]: email });
+    if (!user) return next(errorHandler(404, "User not found"));
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; 
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}?role=${role}`;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Qualty.ai Password Reset",
+      html: `
+        <h2>Password Reset Request</h2>
+        <p>Hello ${user.name || user.companyName},</p>
+        <p>You requested to reset your password. Click the link below to set a new password:</p>
+        <a href="${resetUrl}" style="color:#2563EB;">Reset Password</a>
+        <p>This link will expire in 1 hour.</p>
+      `,
+    });
+ 
+    res.json({ success: true, message: "Password reset email sent" });
+  } catch (err) {
+    next(errorHandler(500, err.message));
+  }
+};
+
+const resetPasswordController = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { role, password } = req.body;
+    if (!role || !password) return next(errorHandler(400, "Role and new password required"));
+
+    const Model = getModelByRole(role);
+    if (!Model) return next(errorHandler(400, "Invalid role"));
+
+    const user = await Model.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+    if (!user) return next(errorHandler(400, "Invalid or expired token"));
+
+    user.password = await bcrypt.hash(password, 12);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ success: true, message: "Password reset successful" });
+  } catch (err) {
+    next(errorHandler(500, err.message));
+  }
+};
+
 module.exports = {
   signInController,
   signUpController,
   logoutController,
   getUserProfileController,
   getUserById,
+  resetPasswordController,
+  forgotPasswordController
 };

@@ -83,7 +83,7 @@ const customerSchema = new mongoose.Schema(
     verificationExpires: { type: Date },
 
     resetPasswordToken: String,
-    resetPasswordExpire: Date,
+    resetPasswordExpires: Date,
   },
   { timestamps: true }
 );

@@ -123,7 +123,13 @@ const inspectionEnquirySchema = new mongoose.Schema(
     inspectionBudget: { type: Number, default: 0, min: 0, }, 
     platformFee: { type: Number, default: 0 },
     currency: { type: String, enum: ["INR", "USD"], default: "INR" },
-    otherRequirements: { type: String, default: "" },
+    otherRequirements: {
+  type: String,
+  default: "",
+  maxlength: [300, "Requirements cannot exceed 300 characters"],
+  trim: true,
+},
+
   attachmentUrl: { type: String, default: null }, 
   },
   { timestamps: true }

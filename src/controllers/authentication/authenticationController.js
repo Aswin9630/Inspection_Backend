@@ -456,7 +456,7 @@ const forgotPasswordController = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; 
     await user.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}?role=${role}`;
+    const resetUrl = `${process.env.FRONTEND_PROD_URL}/reset-password/${token}?role=${role}`;
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,

@@ -6,7 +6,6 @@ const Inspector = require("../../models/Inspector/inspectorModel");
 const InspectionCompany = require("../../models/InspectionCompany/inspectionCompamyModel");
 const errorHandler = require("../../utils/errorHandler");
 const generateTokenAndCookie = require("../../middleware/generateTokenAndCookie");
-// const { verifyPan, verifyGst } = require("../../config/sandboxClient");
 
 const signUpController = async (req, res, next) => {
   try {
@@ -33,9 +32,7 @@ const signUpController = async (req, res, next) => {
           countryCode,
           mobileNumber,
           publishRequirements,
-          // panNumber,
-          // gstNumber,
-          // wantsKyc,
+          gstNumber,
         } = req.body;
 
         if (!name || !email || !password || !countryCode || !mobileNumber) {
@@ -47,27 +44,24 @@ const signUpController = async (req, res, next) => {
             req.files?.importExportCertificate?.[0]?.path || "",
         };
 
-        if (
-          publishRequirements === "true" &&
-          (!documents?.tradeLicense || !documents?.importExportCertificate)
-        ) {
-          return next(
-            errorHandler(400, "Documents required to publish requirements")
-          );
-        }
+         const isIndian = countryCode === "+91";
+      const shouldPublish = publishRequirements === "true" || publishRequirements === true;
 
-        // let kycStatus = "none";
-        // if (wantsKyc === "true" || wantsKyc === true) {
-        //   try {
-        //     await verifyPan(panNumber);
-        //     await verifyGst(gstNumber);
-        //     kycStatus = "verified";
-        //   } catch (e) {
-        //     return next(
-        //       errorHandler(400, e.message || "KYC verification failed")
-        //     );
-        //   }
-        // }
+          if (shouldPublish) {
+        if (isIndian) {
+          if (!gstNumber) {
+            return next(
+              errorHandler(400, "GST number is required to publish requirements")
+            );
+          }
+        } else {
+          if (!documents?.tradeLicense) {
+            return next(
+              errorHandler(400, "Legal documents is required to publish requirements")
+            );
+          }
+        }
+      }
 
         userData = {
           name,
@@ -76,12 +70,10 @@ const signUpController = async (req, res, next) => {
           address,
           countryCode,
           mobileNumber,
-          publishRequirements: publishRequirements === "true",
-          documents,
           role,
-          // panNumber: panNumber || null,
-          // gstNumber: gstNumber || null,
-          // kycStatus,
+          publishRequirements: shouldPublish,
+          documents :isIndian && shouldPublish ? {} : documents,
+          gstNumber: isIndian && shouldPublish ? gstNumber : null,
         };
         break;
       }
@@ -241,7 +233,7 @@ const signUpController = async (req, res, next) => {
 
     const token = crypto.randomBytes(32).toString("hex");
     userData.emailVerificationToken = token;
-    userData.verificationExpires = Date.now() + 60 * 60 * 1000;
+    userData.verificationExpires = Date.now() + 60 * 60 * 1000 * 24;
     userData.isVerified = false;
 
     const newUser = await Model.create(userData);

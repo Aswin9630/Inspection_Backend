@@ -24,7 +24,7 @@ const raiseEnquiryController = async (req, res, next) => {
 
     const isMissing = (val) => !val || typeof val !== "string" || val.trim().length === 0;
     if (isMissing(customer.documents?.tradeLicense) || isMissing(customer.documents?.importExportCertificate)) {
-      return next(errorHandler(403, "Upload Trade License and Import Export Certificate in Account section"));
+      return next(errorHandler(403, "Verify Your Registered GST number in Profile Section"));
     }
 
     const now = new Date();
@@ -334,7 +334,6 @@ const updateCustomerDocumentsController = async (req, res, next) => {
     }
 
     const updates = {};
-
     if (req.files?.tradeLicense?.[0]?.path) {
       updates["documents.tradeLicense"] = req.files.tradeLicense[0].path;
     }
@@ -357,7 +356,7 @@ const updateCustomerDocumentsController = async (req, res, next) => {
       updates["documents.importExportCertificate"] ||
       customer.documents?.importExportCertificate;
 
-    if (tradeLicense && importExportCertificate) {
+    if (tradeLicense) {
       updates.publishRequirements = true;
     }
 
@@ -372,9 +371,49 @@ const updateCustomerDocumentsController = async (req, res, next) => {
       message: "Documents updated successfully",
       documents: updatedCustomer.documents,
       publishRequirements: updatedCustomer.publishRequirements,
+      customer:updatedCustomer
     });
   } catch (error) {
     next(errorHandler(500, "Failed to update documents: " + error.message));
+  }
+};
+
+const updateCustomerGSTController = async (req, res, next) => {
+  try {
+    const { gstNumber } = req.body;
+
+    if (!gstNumber) {
+      return next(errorHandler(400, "GST number is required"));
+    }
+
+    const existing = await Customer.findOne({
+      gstNumber,
+      _id: { $ne: req.user._id },
+    });
+
+    if (existing) {
+      return next(
+        errorHandler(400, "GST number already linked to another account")
+      );
+    }
+
+    const updatedCustomer = await Customer.findByIdAndUpdate(
+      req.user._id,
+      {
+        gstNumber,
+        gstVerified: true,
+        publishRequirements: true,
+      },
+      { new: true, runValidators: true }
+    ).select("-password -refreshToken -__v");
+
+    res.status(200).json({
+      success: true,
+      message: "GST details saved successfully",
+      customer: updatedCustomer,
+    });
+  } catch (error) {
+    next(errorHandler(500, error.message));
   }
 };
 
@@ -611,4 +650,5 @@ module.exports = {
   getCustomerAnalysis,
   getWonInspectors,
   getDashboardStats,
+  updateCustomerGSTController
 };

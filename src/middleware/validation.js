@@ -5,13 +5,13 @@ const passwordRules = () =>
     .isLength({ min: 8, max: 20 })
     .withMessage("Password must be between 8 and 20 characters")
     .matches(/[A-Z]/)
-    .withMessage("Must include at least one uppercase letter")
+    .withMessage("Must include at least one uppercase letter in Password")
     .matches(/[a-z]/)
-    .withMessage("Must include at least one lowercase letter")
+    .withMessage("Must include at least one lowercase letter in Password")
     .matches(/\d/)
-    .withMessage("Must include at least one number")
+    .withMessage("Must include at least one number in Password")
     .matches(/[!@#$%^&*(){}:"<>?,.|]/)
-    .withMessage("Must include at least one special character");
+    .withMessage("Must include at least one special character in Password");
 
 const emailRule = (field = "email") =>
   check(field, "Invalid email format").isEmail();
@@ -40,52 +40,66 @@ const signUpValidation = () => {
           check("name", "Name is required").isString().isLength({ min: 2 }),
           emailRule(),
           passwordRules(),
-          countryCodeRule(),
+          countryCodeRule(), 
           mobileRule(),
           check("address", "Address too long")
             .optional()
             .isLength({ max: 100 }),
           check("publishRequirements").optional().isBoolean(),
-          check("documents.tradeLicense").custom((value, { req }) => {
-            const shouldRequire =
-              req.body.publishRequirements === "true" ||
-              req.body.publishRequirements === true;
-            const fileExists = req.files?.tradeLicense?.length > 0;
-            if (shouldRequire && !fileExists) {
-              throw new Error("Trade license is required");
+
+          check("gstNumber").custom((val, { req }) => {
+            const shouldPublish = req.body.publishRequirements === "true" || req.body.publishRequirements === true;
+            const isIndian = req.body.countryCode === "+91";
+            
+            if (shouldPublish && isIndian) {
+              if (!val) {
+                throw new Error("GST number is required to publish requirements");
+              }
+              if (!/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(val)) {
+                throw new Error("Invalid GST number format");
+              }
             }
             return true;
           }),
 
-          check("documents.importExportCertificate").custom(
-            (value, { req }) => {
-              const shouldRequire =
-                req.body.publishRequirements === "true" ||
-                req.body.publishRequirements === true;
-              const fileExists = req.files?.importExportCertificate?.length > 0;
-              if (shouldRequire && !fileExists) {
-                throw new Error("Import/Export certificate is required");
-              }
-              return true;
-            }
-          ),
-          check("wantsKyc").optional().isBoolean(),
-check("panNumber")
-  .optional()
-  .custom((val, { req }) => {
-    const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
-    if (wants && !val) throw new Error("PAN is required for KYC");
-    if (val && !/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(val)) throw new Error("Invalid PAN format");
-    return true;
-  }),
-check("gstNumber")
-  .optional()
-  .custom((val, { req }) => {
-    const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
-    if (wants && !val) throw new Error("GST is required for KYC");
-    if (val && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(val)) throw new Error("Invalid GST format");
-    return true;
-  }),
+         body("tradeLicense").custom((value, { req }) => {
+      const isInternational = req.body.countryCode !== "+91";
+      const shouldPublish = String(req.body.publishRequirements) === "true";
+      const fileExists = req.files && req.files.tradeLicense;
+      if (shouldPublish && isInternational && !fileExists) {
+        throw new Error("Legal document/Trade license is required for international customers");
+      }
+      return true;
+    }),
+
+//           check("documents.importExportCertificate").custom(
+//             (value, { req }) => {
+//               const shouldRequire =
+//                 req.body.publishRequirements === "true" ||
+//                 req.body.publishRequirements === true;
+//               const fileExists = req.files?.importExportCertificate?.length > 0;
+//               if (shouldRequire && !fileExists) {
+//                 throw new Error("Import/Export certificate is required");
+//               }
+//               return true;
+//             }
+//           ),
+// check("panNumber")
+//   .optional()
+//   .custom((val, { req }) => {
+//     const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
+//     if (wants && !val) throw new Error("PAN is required for KYC");
+//     if (val && !/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(val)) throw new Error("Invalid PAN format");
+//     return true;
+//   }),
+// check("gstNumber")
+//   .optional()
+//   .custom((val, { req }) => {
+//     const wants = req.body.wantsKyc === "true" || req.body.wantsKyc === true;
+//     if (wants && !val) throw new Error("GST is required for KYC");
+//     if (val && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/.test(val)) throw new Error("Invalid GST format");
+//     return true;
+//   }),
         ];
       }
 
@@ -243,7 +257,6 @@ const handleValidationErrors = (req, res, next) => {
       return acc;
     }, {});
   } else {
-    console.log("Files: none");
   }
 
   const errors = validationResult(req);

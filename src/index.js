@@ -16,7 +16,7 @@ const locationPriceRoutes = require("./routes/QuickService/locationPriceRoutes")
 const quickServiceRoutes = require("./routes/QuickService/quickServiceRoutes");
 const chatBotRouter = require("./routes/chatBot/chatBotRouter");
 const inspectionCompanyRoutes = require("./routes/inspectionCompany/inspectionCompanyRouter");
-// const kycRoutes = require("./routes/KYC/kycRouter");
+const kycRoutes = require("./routes/KYC/kycRouter");
 const contactRoutes = require("./routes/Home/contactRoutes");
 const webinarRoutes = require("./routes/Webinar/webinarRoutes");
 const initializeSocket = require("./utils/socket");
@@ -42,13 +42,13 @@ app.get("/test",(req,res)=>{
   res.json({message:"Testing APIs"}) 
 }); 
 app.use("/auth",authRoutes);
-// app.use("/kyc", kycRoutes);
+app.use("/kyc", kycRoutes);
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes); 
 app.use("/inspectionCompany", inspectionCompanyRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/chat", chatRoutes);
-app.use("/quick-services",quickServicesRoutes)
+app.use("/quick-services",quickServicesRoutes);
 app.use("/admin/locations", adminLocationRoutes);
 app.use("/locationPrice", locationPriceRoutes);
 app.use("/quickService", quickServiceRoutes);
@@ -58,7 +58,7 @@ app.use("/webinar", webinarRoutes);
 
 const server = http.createServer(app)
 initializeSocket(server);
- 
+  
 const serverAndDBconnect = async () => {   
   try { 
     await connectDB();

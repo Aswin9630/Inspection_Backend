@@ -20,8 +20,8 @@ const signUpController = async (req, res, next) => {
         )
       );
     }
-
-    let userData;
+                                                                             
+    let userData; 
     switch (role) {
       case "customer": {
         const {
@@ -42,26 +42,19 @@ const signUpController = async (req, res, next) => {
           tradeLicense: req.files?.tradeLicense?.[0]?.path || "",
           importExportCertificate:
             req.files?.importExportCertificate?.[0]?.path || "",
-        };
-
-         const isIndian = countryCode === "+91";
+        }; 
+  
+         const isIndian = countryCode === "+91"; 
       const shouldPublish = publishRequirements === "true" || publishRequirements === true;
-
-          if (shouldPublish) {
-        if (isIndian) {
-          if (!gstNumber) {
-            return next(
-              errorHandler(400, "GST number is required to publish requirements")
-            );
+ 
+        if (shouldPublish) {
+          if (isIndian && !gstNumber) {
+            return next(errorHandler(400, "GST verification is required for Indian users."));
           }
-        } else {
-          if (!documents?.tradeLicense) {
-            return next(
-              errorHandler(400, "Legal documents is required to publish requirements")
-            );
+          if (!isIndian && !documents.tradeLicense) {
+            return next(errorHandler(400, "Legal documents are required for international users."));
           }
         }
-      }
 
         userData = {
           name,
@@ -74,6 +67,7 @@ const signUpController = async (req, res, next) => {
           publishRequirements: shouldPublish,
           documents :isIndian && shouldPublish ? {} : documents,
           gstNumber: isIndian && shouldPublish ? gstNumber : null,
+          gstVerified: isIndian && shouldPublish ? true : false,
         };
         break;
       }
@@ -325,10 +319,8 @@ const signInController = async (req, res, next) => {
       return next(errorHandler(400, "Email and password are required"));
     }
 
-    // pick model by canonical role
     const Model = role === "customer" ? Customer : role === "inspector" ? Inspector : InspectionCompany;
 
-    // use companyEmail for inspection_company, otherwise email
     const emailField = role === "inspection_company" ? "companyEmail" : "email";
 
     const user = await Model.findOne({ [emailField]: email }).select("+password");
@@ -430,7 +422,6 @@ const getUserById = async (req, res, next) => {
     return next(err);
   }
 };
-
 
 const getModelByRole = (role) => {
   if (role === "customer") return Customer;

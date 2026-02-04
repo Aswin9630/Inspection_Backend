@@ -19,20 +19,35 @@ const raiseEnquiryController = async (req, res, next) => {
       return next(errorHandler(403, "Only customers can raise enquiries"));
     }
 
-    const customer = await Customer.findById(req.user._id).select("name email mobileNumber documents publishRequirements");
+    const customer = await Customer.findById(req.user._id).select("name email mobileNumber countryCode gstVerified documents publishRequirements");
     if (!customer) return next(errorHandler(404, "Customer not found"));
 
     const isMissing = (val) => !val || typeof val !== "string" || val.trim().length === 0;
-    if (isMissing(customer.documents?.tradeLicense) || isMissing(customer.documents?.importExportCertificate)) {
-      return next(errorHandler(403, "Verify Your Registered GST number in Profile Section"));
+
+    const isIndianUser = customer.countryCode === "+91";
+    const hasAnyDocument =
+      !isMissing(customer.documents?.tradeLicense) ||
+      !isMissing(customer.documents?.importExportCertificate);
+
+      const isEligible = isIndianUser ? customer.gstVerified === true : hasAnyDocument;
+
+    if (!isEligible) {
+      return next(
+        errorHandler(
+          403,
+          isIndianUser
+            ? "Verify your registered GST number in Profile Section"
+            : "Upload at least one legal document in Profile Section"
+        )
+      );
     }
 
-    const now = new Date();
-    const indiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-    const hour = indiaTime.getHours();
-    if (hour < 7 || hour >= 24) {
-      return next(errorHandler(403, "Enquiries can only be raised between 7:00 AM and 12:00 AM IST"));
-    }
+    // const now = new Date();
+    // const indiaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    // const hour = indiaTime.getHours();
+    // if (hour < 7 || hour >= 24) {
+    //   return next(errorHandler(403, "Enquiries can only be raised between 7:00 AM and 12:00 AM IST"));
+    // }
 
     const {
       location,

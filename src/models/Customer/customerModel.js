@@ -51,34 +51,42 @@ const customerSchema = new mongoose.Schema(
     documents: {
       tradeLicense: {
         type: String,
-        required: function () {
-          return this.publishRequirements;
-        },
+        default:null,
+        // required: function () {
+          // return this.publishRequirements;
+        // },
       }, 
       importExportCertificate: {
-        type: String,  
-        required: function () {
-          return this.publishRequirements;
-        },
+        type: String, 
+        default:null, 
+        // required: function () {
+          // return this.publishRequirements;
+        // },
       },
-    },
-    panNumber: {
-      type: String,
-      default: null,
-      match: [/^[A-Z]{5}\d{4}[A-Z]{1}$/, "Invalid PAN number"],
     },
     gstNumber: {
       type: String,
+      unique: true, 
+      sparse:true,
       default: null,
       match: [/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/, "Invalid GST number"],
     },
-    iecNumber: { type: String, default: null },
-    kycStatus: {
-      type: String,
-      enum: ["none", "pending", "verified", "failed"],
-      default: "none",
+  gstVerified: {
+      type: Boolean,
+      default: false,
     },
-    isVerified: { type: Boolean, default: false },
+
+    gstDetails: {
+  legalName: String,
+  tradeName: String,
+  gstType: String,
+  registrationDate: String,
+  state: String,
+  lastVerifiedAt: Date,
+  status:String,
+},
+ 
+    isVerified: { type: Boolean, default: false }, 
     emailVerificationToken: { type: String },
     verificationExpires: { type: Date },
 

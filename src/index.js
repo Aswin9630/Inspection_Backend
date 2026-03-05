@@ -14,6 +14,7 @@ const adminLocationRoutes = require("./routes/addInspectorLocation/addInspectorL
 const chatRoutes = require("./routes/Chat/chatRouter");
 const locationPriceRoutes = require("./routes/QuickService/locationPriceRoutes");
 const quickServiceRoutes = require("./routes/QuickService/quickServiceRoutes");
+const quickInspectionRoutes = require("./routes/QuickInspection/quickInspectionRoutes");
 const chatBotRouter = require("./routes/chatBot/chatBotRouter");
 const inspectionCompanyRoutes = require("./routes/inspectionCompany/inspectionCompanyRouter");
 const kycRoutes = require("./routes/KYC/kycRouter");
@@ -42,20 +43,21 @@ app.get("/test",(req,res)=>{
   res.json({message:"Testing APIs"}) 
 }); 
 app.use("/auth",authRoutes);
-app.use("/kyc", kycRoutes);
+app.use("/kyc", kycRoutes);   
 app.use("/customer",customerRoutes);
 app.use("/inspector", inspectorRoutes); 
 app.use("/inspectionCompany", inspectionCompanyRoutes);
 app.use("/payment", paymentRoutes);
-app.use("/chat", chatRoutes);
+app.use("/chat", chatRoutes); 
+app.use("/quickInspection", quickInspectionRoutes); 
 app.use("/quick-services",quickServicesRoutes);
-app.use("/admin/locations", adminLocationRoutes);
+app.use("/admin/locations", adminLocationRoutes); 
 app.use("/locationPrice", locationPriceRoutes);
 app.use("/quickService", quickServiceRoutes);
 app.use("/chatBot",chatBotRouter)
 app.use("/contact",contactRoutes)
 app.use("/webinar", webinarRoutes);
-
+   
 const server = http.createServer(app)
 initializeSocket(server);
   

@@ -36,13 +36,15 @@ const getAvailableEnquiries = async (req, res, next) => {
         const { platformFee: _, ...sanitized } = enquiry.toObject();
 
         const customerDoc = await Customer.findById(enquiry.customer).select(
-          "name email mobileNumber"
+          "name email mobileNumber publishRequirements gstVerified"
         );
         const contact = {
           name:  customerDoc?.name || "",
           email:  customerDoc?.email || "",
           phoneNumber:
              customerDoc?.mobileNumber || "",
+             publishRequirements:customerDoc?.publishRequirements || "",
+             gstVerified:customerDoc?.gstVerified || "",
         };
         return {
           ...sanitized,

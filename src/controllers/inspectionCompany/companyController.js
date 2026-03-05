@@ -58,27 +58,53 @@ const placeCompanyBid = async (req, res, next) => {
     }
 
     const company = await InspectionCompany.findById(req.user._id).select(
-      "publishRequirements documents licenseNumber"
+      "countryCode gstVerified legalDocument"
     );
 
     if (!company) {
       return next(errorHandler(404, "Inspection company not found"));
     }
 
-    const pub = company.publishRequirements === true;
-    const { incorporationCertificate } = company.documents || {};
-    const licenseNumber = company.licenseNumber || null;
+    // const pub = company.publishRequirements === true;
+    // const { incorporationCertificate } = company.documents || {};
+    // const licenseNumber = company.licenseNumber || null;
 
-    const isMissing = (val) => !val || (typeof val === "string" && val.trim().length === 0);
+    // const isMissing = (val) => !val || (typeof val === "string" && val.trim().length === 0);
 
-    if (!pub || isMissing(incorporationCertificate) || isMissing(licenseNumber)) {
-      return next(
-        errorHandler(
-          403,
-          "You must enable 'Publish Requirements' and upload Incorporation Certificate and provide License Number before placing a bid"
-        )
-      );
+    // if (!pub || isMissing(incorporationCertificate) || isMissing(licenseNumber)) {
+    //   return next(
+    //     errorHandler(
+    //       403,
+    //       "You must enable 'Publish Requirements' and upload Incorporation Certificate and provide License Number before placing a bid"
+    //     )
+    //   );
+    // }
+
+
+    const isIndian = company.countryCode === "+91" || !company.countryCode;
+
+    if (isIndian) {
+      if (!company.gstVerified) {
+        return next(
+          errorHandler(
+            403,
+            "Please verify your GST number in Account > GST Details before placing a bid"
+          )
+        );
+      }
+    } else {
+      const hasDocument = company.legalDocument?.url && company.legalDocument.url.trim() !== "";
+      if (!hasDocument) {
+        return next(
+          errorHandler(
+            403,
+            "Please upload your legal company document in Account > GST Details before placing a bid"
+          )
+        );
+      }
     }
+
+
 
     const { enquiryId } = req.params;
     const { amount, note } = req.body;
@@ -194,6 +220,66 @@ const getLowestCompanyBidsPerEnquiry = async (req, res, next) => {
   }
 };
 
+// const updateCompanyDocumentsController = async (req, res, next) => {
+//   try {
+//     if (req.user.role !== "inspection_company") {
+//       return next(errorHandler(403, "Only inspection companies can update documents"));
+//     }
+
+//     const updates = {};
+
+//     if (req.files?.incorporationCertificate?.[0]?.path) {
+//       updates["documents.incorporationCertificate"] = req.files.incorporationCertificate[0].path;
+//     }
+
+//     const { licenseNumber, publishRequirements } = req.body;
+//     if (licenseNumber) updates["licenseNumber"] = String(licenseNumber).trim();
+
+//     if (typeof publishRequirements !== "undefined") {
+//       const pub =
+//         publishRequirements === true ||
+//         publishRequirements === "true" ||
+//         publishRequirements === 1 ||
+//         publishRequirements === "1";
+//       updates["publishRequirements"] = pub;
+//     }
+
+//     const current = await InspectionCompany.findById(req.user._id).lean();
+
+//     const hasIncorp =
+//       updates["documents.incorporationCertificate"] ||
+//       current?.documents?.incorporationCertificate;
+//     const hasLicense =
+//       updates["licenseNumber"] !== undefined
+//         ? updates["licenseNumber"]
+//         : current?.licenseNumber;
+//     const pub =
+//       updates["publishRequirements"] !== undefined
+//         ? updates["publishRequirements"]
+//         : current?.publishRequirements;
+
+//     const isComplete = pub && hasIncorp && hasLicense;
+
+//     const updatedCompany = await InspectionCompany.findByIdAndUpdate(
+//       req.user._id,
+//       { $set: updates },
+//       { new: true, runValidators: true }
+//     ).select(
+//       "companyName companyEmail phoneNumber mobileNumber publishRequirements documents licenseNumber certificates"
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Documents updated successfully",
+//       company: updatedCompany
+//     });
+//   } catch (error) {
+//     next(errorHandler(500, "Failed to update documents: " + error.message));
+//   }
+// };
+
+
+
 const updateCompanyDocumentsController = async (req, res, next) => {
   try {
     if (req.user.role !== "inspection_company") {
@@ -203,7 +289,8 @@ const updateCompanyDocumentsController = async (req, res, next) => {
     const updates = {};
 
     if (req.files?.incorporationCertificate?.[0]?.path) {
-      updates["documents.incorporationCertificate"] = req.files.incorporationCertificate[0].path;
+      updates["documents.incorporationCertificate"] =
+        req.files.incorporationCertificate[0].path;
     }
 
     const { licenseNumber, publishRequirements } = req.body;
@@ -218,22 +305,6 @@ const updateCompanyDocumentsController = async (req, res, next) => {
       updates["publishRequirements"] = pub;
     }
 
-    const current = await InspectionCompany.findById(req.user._id).lean();
-
-    const hasIncorp =
-      updates["documents.incorporationCertificate"] ||
-      current?.documents?.incorporationCertificate;
-    const hasLicense =
-      updates["licenseNumber"] !== undefined
-        ? updates["licenseNumber"]
-        : current?.licenseNumber;
-    const pub =
-      updates["publishRequirements"] !== undefined
-        ? updates["publishRequirements"]
-        : current?.publishRequirements;
-
-    const isComplete = pub && hasIncorp && hasLicense;
-
     const updatedCompany = await InspectionCompany.findByIdAndUpdate(
       req.user._id,
       { $set: updates },
@@ -245,12 +316,71 @@ const updateCompanyDocumentsController = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Documents updated successfully",
-      company: updatedCompany
+      company: updatedCompany,
     });
   } catch (error) {
     next(errorHandler(500, "Failed to update documents: " + error.message));
   }
 };
+
+const updateCompanyProfileController = async (req, res, next) => {
+  try {
+    const companyId = req.user._id;
+
+    const ALLOWED = ["companyName", "mobileNumber"];
+    const updates = {};
+
+    for (const key of ALLOWED) {
+      if (req.body[key] !== undefined) {
+        updates[key] = String(req.body[key]).trim();
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: "No updatable fields provided" });
+    }
+
+    if (updates.companyName !== undefined) {
+      if (updates.companyName.length < 2 || updates.companyName.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "Company name must be between 2 and 100 characters",
+        });
+      }
+    }
+
+    if (updates.mobileNumber !== undefined) {
+      if (!/^\d{6,15}$/.test(updates.mobileNumber)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile number must contain 6–15 digits only",
+        });
+      }
+    }
+
+    const updatedCompany = await InspectionCompany.findByIdAndUpdate(
+      companyId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select(
+      "companyName companyEmail mobileNumber phoneNumber countryCode gstNumber gstVerified gstDetails legalDocument isVerified createdAt"
+    );
+
+    if (!updatedCompany) {
+      return next(errorHandler(404, "Company not found"));
+    }
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      company: updatedCompany,
+    });
+  } catch (err) {
+    next(errorHandler(500, err.message || "Failed to update profile"));
+  }
+};
+
+
 
 const getCompanyHistory = async (req, res, next) => {
   try {
@@ -367,6 +497,7 @@ const getConfirmedCustomersForCompany = async (req, res, next) => {
   }
 };
 
+
 module.exports = {
   getAvailableEnquiriesForCompany,
   placeCompanyBid,
@@ -377,5 +508,6 @@ module.exports = {
   getCompanyHistory,
   getCompanyWonBids,
   getCompanyAnalytics,
-  getConfirmedCustomersForCompany
+  getConfirmedCustomersForCompany,
+  updateCompanyProfileController
 };

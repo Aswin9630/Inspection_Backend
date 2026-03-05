@@ -7,248 +7,248 @@ const InspectionCompany = require("../../models/InspectionCompany/inspectionComp
 const errorHandler = require("../../utils/errorHandler");
 const generateTokenAndCookie = require("../../middleware/generateTokenAndCookie");
 
-const signUpController = async (req, res, next) => {
-  try {
-    const { role } = req.body;
+// const signUpController = async (req, res, next) => {
+//   try {
+//     const { role } = req.body;
 
-    const validRoles = ["customer", "inspector",  "inspection_company"];
-    if (!role || !validRoles.includes(role)) {
-      return next(
-        errorHandler(
-          400,
-          "Invalid role. Must be customer, inspector, or inspection company."
-        )
-      );
-    }
+//     const validRoles = ["customer", "inspector",  "inspection_company"];
+//     if (!role || !validRoles.includes(role)) {
+//       return next(
+//         errorHandler(
+//           400,
+//           "Invalid role. Must be customer, inspector, or inspection company."
+//         )
+//       );
+//     }
                                                                              
-    let userData; 
-    switch (role) {
-      case "customer": {
-        const {
-          name,
-          email,
-          password,
-          address,
-          countryCode,
-          mobileNumber,
-          publishRequirements,
-          gstNumber,
-        } = req.body;
+//     let userData; 
+//     switch (role) {
+//       case "customer": {
+//         const {
+//           name,
+//           email,
+//           password,
+//           address,
+//           countryCode,
+//           mobileNumber,
+//           publishRequirements,
+//           gstNumber,
+//         } = req.body;
 
-        if (!name || !email || !password || !countryCode || !mobileNumber) {
-          return next(errorHandler(400, "Missing required customer fields"));
-        }
-        const documents = {
-          tradeLicense: req.files?.tradeLicense?.[0]?.path || "",
-          importExportCertificate:
-            req.files?.importExportCertificate?.[0]?.path || "",
-        }; 
+//         if (!name || !email || !password || !countryCode || !mobileNumber) {
+//           return next(errorHandler(400, "Missing required customer fields"));
+//         }
+//         const documents = {
+//           tradeLicense: req.files?.tradeLicense?.[0]?.path || "",
+//           importExportCertificate:
+//             req.files?.importExportCertificate?.[0]?.path || "",
+//         }; 
   
-         const isIndian = countryCode === "+91"; 
-      const shouldPublish = publishRequirements === "true" || publishRequirements === true;
+//          const isIndian = countryCode === "+91"; 
+//       const shouldPublish = publishRequirements === "true" || publishRequirements === true;
  
-        if (shouldPublish) {
-          if (isIndian && !gstNumber) {
-            return next(errorHandler(400, "GST verification is required for Indian users."));
-          }
-          if (!isIndian && !documents.tradeLicense) {
-            return next(errorHandler(400, "Legal documents are required for international users."));
-          }
-        }
+//         if (shouldPublish) {
+//           if (isIndian && !gstNumber) {
+//             return next(errorHandler(400, "GST verification is required for Indian users."));
+//           }
+//           if (!isIndian && !documents.tradeLicense) {
+//             return next(errorHandler(400, "Legal documents are required for international users."));
+//           }
+//         }
 
-        userData = {
-          name,
-          email,
-          password,
-          address,
-          countryCode,
-          mobileNumber,
-          role,
-          publishRequirements: shouldPublish,
-          documents :isIndian && shouldPublish ? {} : documents,
-          gstNumber: isIndian && shouldPublish ? gstNumber : null,
-          gstVerified: isIndian && shouldPublish ? true : false,
-        };
-        break;
-      }
+//         userData = {
+//           name,
+//           email,
+//           password,
+//           address,
+//           countryCode,
+//           mobileNumber,
+//           role,
+//           publishRequirements: shouldPublish,
+//           documents :isIndian && shouldPublish ? {} : documents,
+//           gstNumber: isIndian && shouldPublish ? gstNumber : null,
+//           gstVerified: isIndian && shouldPublish ? true : false,
+//         };
+//         break;
+//       }
 
-      case "inspector": {
-        const {
-          name,
-          email,
-          password,
-          address,
-          countryCode,
-          mobileNumber,
-          inspectorType,
-          acceptsRequests,
-          commodities,
-          accountNumber,
-          bankName,
-          ifscCode,
-        } = req.body;
+//       case "inspector": {
+//         const {
+//           name,
+//           email,
+//           password,
+//           address,
+//           countryCode,
+//           mobileNumber,
+//           inspectorType,
+//           acceptsRequests,
+//           commodities,
+//           accountNumber,
+//           bankName,
+//           ifscCode,
+//         } = req.body;
 
-        if (
-          !name ||
-          !email ||
-          !password ||
-          !countryCode ||
-          !mobileNumber ||
-          !inspectorType
-        ) {
-          return next(errorHandler(400, "Missing required inspector fields"));
-        }
-        const identityDocuments = {
-          aadhaarCard: req.files?.aadhaarCard?.[0]?.path || null,
-        };
+//         if (
+//           !name ||
+//           !email ||
+//           !password ||
+//           !countryCode ||
+//           !mobileNumber ||
+//           !inspectorType
+//         ) {
+//           return next(errorHandler(400, "Missing required inspector fields"));
+//         }
+//         const identityDocuments = {
+//           aadhaarCard: req.files?.aadhaarCard?.[0]?.path || null,
+//         };
 
-        const billingDetails = {
-          accountNumber:
-            accountNumber && accountNumber.trim() !== ""
-              ? accountNumber.trim()
-              : null,
-          bankName: bankName && bankName.trim() !== "" ? bankName.trim() : null,
-          ifscCode: ifscCode && ifscCode.trim() !== "" ? ifscCode.trim() : null,
-        };
+//         const billingDetails = {
+//           accountNumber:
+//             accountNumber && accountNumber.trim() !== ""
+//               ? accountNumber.trim()
+//               : null,
+//           bankName: bankName && bankName.trim() !== "" ? bankName.trim() : null,
+//           ifscCode: ifscCode && ifscCode.trim() !== "" ? ifscCode.trim() : null,
+//         };
 
-        if (
-          acceptsRequests === "true" &&
-          (!identityDocuments?.aadhaarCard ||
-            !accountNumber ||
-            accountNumber.trim() === "" ||
-            !bankName ||
-            bankName.trim() === "" ||
-            !ifscCode ||
-            ifscCode.trim() === "")
-        ) {
-          return next(
-            errorHandler(
-              400,
-              "Documents and billing details required to accept requests"
-            )
-          );
-        }
+//         if (
+//           acceptsRequests === "true" &&
+//           (!identityDocuments?.aadhaarCard ||
+//             !accountNumber ||
+//             accountNumber.trim() === "" ||
+//             !bankName ||
+//             bankName.trim() === "" ||
+//             !ifscCode ||
+//             ifscCode.trim() === "")
+//         ) {
+//           return next(
+//             errorHandler(
+//               400,
+//               "Documents and billing details required to accept requests"
+//             )
+//           );
+//         }
 
-        userData = {
-          name,
-          email,
-          password,
-          address,
-          countryCode,
-          mobileNumber,
-          inspectorType,
-          acceptsRequests: acceptsRequests === "true",
-          identityDocuments,
-          billingDetails,
-          commodities,
-          role,
-        };
-        break;
-      }
+//         userData = {
+//           name,
+//           email,
+//           password,
+//           address,
+//           countryCode,
+//           mobileNumber,
+//           inspectorType,
+//           acceptsRequests: acceptsRequests === "true",
+//           identityDocuments,
+//           billingDetails,
+//           commodities,
+//           role,
+//         };
+//         break;
+//       }
 
-      case "inspection_company": {
-        const {
-          companyName,
-        companyEmail,
-        firstName,
-        lastName,
-        password,
-        phoneNumber,
-        mobileNumber,
-        licenseNumber,
-        websiteUrl,
-        publishRequirements,
-        certificates,
-        // panNumber,
-        // gstNumber
-        } = req.body;
+//       case "inspection_company": {
+//         const {
+//           companyName,
+//         companyEmail,
+//         firstName,
+//         lastName,
+//         password,
+//         phoneNumber,
+//         mobileNumber,
+//         licenseNumber,
+//         websiteUrl,
+//         publishRequirements,
+//         certificates,
+//         // panNumber,
+//         // gstNumber
+//         } = req.body;
 
-       if (!companyName  || !companyEmail || !password || !phoneNumber || !mobileNumber || !firstName || !lastName) {
-        return next(errorHandler(400, "Missing required company fields"));
-      }
+//        if (!companyName  || !companyEmail || !password || !phoneNumber || !mobileNumber || !firstName || !lastName) {
+//         return next(errorHandler(400, "Missing required company fields"));
+//       }
 
-             const incorporationCertificate = req.files?.incorporationCertificate?.[0]?.path || null;
-  const pub = publishRequirements === "true" || publishRequirements === true;
-  if (pub && (!licenseNumber || !incorporationCertificate)) {
-    return next(errorHandler(400, "License number and legal certificate are required when publishing requirements"));
-  }
+//              const incorporationCertificate = req.files?.incorporationCertificate?.[0]?.path || null;
+//   const pub = publishRequirements === "true" || publishRequirements === true;
+//   if (pub && (!licenseNumber || !incorporationCertificate)) {
+//     return next(errorHandler(400, "License number and legal certificate are required when publishing requirements"));
+//   }
 
-      let parsedCertificates = [];
-      try {
-        parsedCertificates = typeof certificates === "string" ? JSON.parse(certificates) : (certificates || []);
-      } catch (e) {
-        parsedCertificates = [];
-      }
+//       let parsedCertificates = [];
+//       try {
+//         parsedCertificates = typeof certificates === "string" ? JSON.parse(certificates) : (certificates || []);
+//       } catch (e) {
+//         parsedCertificates = [];
+//       }
 
-           userData = {
-        role: "inspection_company",
-        companyName,
-        phoneNumber,
-        mobileNumber,
-        companyEmail,
-        password,
-        firstName,
-        lastName,
-        licenseNumber: pub ? licenseNumber || null : null,
-        websiteUrl: websiteUrl || null,
-        publishRequirements: pub,
-        certificates: parsedCertificates || [],
-             documents: pub ? { incorporationCertificate, businessLicense: null } : undefined,
-        // panNumber: panNumber || null,
-        // gstNumber: gstNumber || null,
-        // kycStatus: "none"
-      };
+//            userData = {
+//         role: "inspection_company",
+//         companyName,
+//         phoneNumber,
+//         mobileNumber,
+//         companyEmail,
+//         password,
+//         firstName,
+//         lastName,
+//         licenseNumber: pub ? licenseNumber || null : null,
+//         websiteUrl: websiteUrl || null,
+//         publishRequirements: pub,
+//         certificates: parsedCertificates || [],
+//              documents: pub ? { incorporationCertificate, businessLicense: null } : undefined,
+//         // panNumber: panNumber || null,
+//         // gstNumber: gstNumber || null,
+//         // kycStatus: "none"
+//       };
       
-        break;
-      }
-    }
+//         break;
+//       }
+//     }
 
-    const Model =
-      role === "customer"
-        ? Customer
-        : role === "inspector"
-        ? Inspector
-        : InspectionCompany;
+//     const Model =
+//       role === "customer"
+//         ? Customer
+//         : role === "inspector"
+//         ? Inspector
+//         : InspectionCompany;
 
-    const emailField = role === "inspection_company" ? "companyEmail" : "email";
-    const emailValue = userData[emailField];
+//     const emailField = role === "inspection_company" ? "companyEmail" : "email";
+//     const emailValue = userData[emailField];
 
-     if (!emailValue) {
-      return next(errorHandler(400, "Email is required"));
-    }
+//      if (!emailValue) {
+//       return next(errorHandler(400, "Email is required"));
+//     }
 
-    const emailExist = await Model.findOne({
-      [emailField]:emailValue
-    });
-    if (emailExist) return next(errorHandler(400, "Email already exists"));
+//     const emailExist = await Model.findOne({
+//       [emailField]:emailValue
+//     });
+//     if (emailExist) return next(errorHandler(400, "Email already exists"));
 
-    const hashedPassword = await bcrypt.hash(userData.password, 12);
-    userData.password = hashedPassword;
+//     const hashedPassword = await bcrypt.hash(userData.password, 12);
+//     userData.password = hashedPassword;
 
-    const token = crypto.randomBytes(32).toString("hex");
-    userData.emailVerificationToken = token;
-    userData.verificationExpires = Date.now() + 60 * 60 * 1000 * 24;
-    userData.isVerified = false;
+//     const token = crypto.randomBytes(32).toString("hex");
+//     userData.emailVerificationToken = token;
+//     userData.verificationExpires = Date.now() + 60 * 60 * 1000 * 24;
+//     userData.isVerified = false;
 
-    const newUser = await Model.create(userData);
+//     const newUser = await Model.create(userData);
 
-        const displayName = userData.companyName || userData.name || `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || "User";
-    await sendVerificationEmail(
-      emailValue, displayName, token, role
-    );
+//         const displayName = userData.companyName || userData.name || `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || "User";
+//     await sendVerificationEmail(
+//       emailValue, displayName, token, role
+//     );
 
-    const { password: _ignored, ...userDetails } = newUser._doc;
+//     const { password: _ignored, ...userDetails } = newUser._doc;
 
-    return res.status(201).json({
-      success: true,
-      message:
-        "Signup successful. Please verify your email to activate your account.",
-      user: userDetails,
-    });
-  } catch (error) {
-    return next(errorHandler(500, error.message));
-  }
-};
+//     return res.status(201).json({
+//       success: true,
+//       message:
+//         "Signup successful. Please verify your email to activate your account.",
+//       user: userDetails,
+//     });
+//   } catch (error) {
+//     return next(errorHandler(500, error.message));
+//   }
+// };
 
 // const signInController = async (req, res, next) => {
 //   try {
@@ -305,6 +305,238 @@ const signUpController = async (req, res, next) => {
 //     return next(errorHandler(500, error.message));
 //   }
 // };
+
+
+
+const signUpController = async (req, res, next) => {
+  try {
+    const { role } = req.body;
+
+    const validRoles = ["customer", "inspector", "inspection_company"];
+    if (!role || !validRoles.includes(role)) {
+      return next(
+        errorHandler(400, "Invalid role. Must be customer, inspector, or inspection company.")
+      );
+    }
+
+    let userData;
+
+    switch (role) {
+      case "customer": {
+        const {
+          name,
+          email,
+          password,
+          address,
+          countryCode,
+          mobileNumber,
+          publishRequirements,
+          gstNumber,
+        } = req.body;
+
+        if (!name || !email || !password || !countryCode || !mobileNumber) {
+          return next(errorHandler(400, "Missing required customer fields"));
+        }
+
+        const documents = {
+          tradeLicense: req.files?.tradeLicense?.[0]?.path || "",
+          importExportCertificate: req.files?.importExportCertificate?.[0]?.path || "",
+        };
+
+        const isIndian = countryCode === "+91";
+        const shouldPublish = publishRequirements === "true" || publishRequirements === true;
+
+        if (shouldPublish) {
+          if (isIndian && !gstNumber) {
+            return next(errorHandler(400, "GST verification is required for Indian users."));
+          }
+          if (!isIndian && !documents.tradeLicense) {
+            return next(errorHandler(400, "Legal documents are required for international users."));
+          }
+        }
+
+        userData = {
+          name,
+          email,
+          password,
+          address,
+          countryCode,
+          mobileNumber,
+          role,
+          publishRequirements: shouldPublish,
+          documents: isIndian && shouldPublish ? {} : documents,
+          gstNumber: isIndian && shouldPublish ? gstNumber : null,
+          gstVerified: isIndian && shouldPublish ? true : false,
+        };
+        break;
+      }
+
+      case "inspector": {
+        const {
+          name,
+          email,
+          password,
+          address,
+          countryCode,
+          mobileNumber,
+          inspectorType,
+          acceptsRequests,
+          commodities,
+          accountNumber,
+          bankName,
+          ifscCode,
+        } = req.body;
+
+        if (!name || !email || !password || !countryCode || !mobileNumber || !inspectorType) {
+          return next(errorHandler(400, "Missing required inspector fields"));
+        }
+
+        const identityDocuments = {
+          aadhaarCard: req.files?.aadhaarCard?.[0]?.path || null,
+        };
+
+        const billingDetails = {
+          accountNumber:
+            accountNumber && accountNumber.trim() !== "" ? accountNumber.trim() : null,
+          bankName: bankName && bankName.trim() !== "" ? bankName.trim() : null,
+          ifscCode: ifscCode && ifscCode.trim() !== "" ? ifscCode.trim() : null,
+        };
+
+        if (
+          acceptsRequests === "true" &&
+          (!identityDocuments?.aadhaarCard ||
+            !accountNumber ||
+            accountNumber.trim() === "" ||
+            !bankName ||
+            bankName.trim() === "" ||
+            !ifscCode ||
+            ifscCode.trim() === "")
+        ) {
+          return next(
+            errorHandler(400, "Documents and billing details required to accept requests")
+          );
+        }
+
+        userData = {
+          name,
+          email,
+          password,
+          address,
+          countryCode,
+          mobileNumber,
+          inspectorType,
+          acceptsRequests: acceptsRequests === "true",
+          identityDocuments,
+          billingDetails,
+          commodities,
+          role,
+        };
+        break;
+      }
+
+      case "inspection_company": {
+        const {
+          companyName,
+          companyEmail,
+          firstName,
+          lastName,
+          password,
+          phoneNumber,
+          mobileNumber,
+          countryCode,
+          websiteUrl,
+          certificates,
+        } = req.body;
+
+        if (
+          !companyName ||
+          !companyEmail ||
+          !password ||
+          !phoneNumber ||
+          !mobileNumber ||
+          !firstName ||
+          !lastName ||
+          !countryCode
+        ) {
+          return next(errorHandler(400, "Missing required company fields"));
+        }
+
+        let parsedCertificates = [];
+        try {
+          parsedCertificates =
+            typeof certificates === "string"
+              ? JSON.parse(certificates)
+              : certificates || [];
+        } catch (e) {
+          parsedCertificates = [];
+        }
+
+        userData = {
+          role: "inspection_company",
+          companyName,
+          phoneNumber,
+          mobileNumber,
+          countryCode,
+          companyEmail,
+          password,
+          firstName,
+          lastName,
+          websiteUrl: websiteUrl || null,
+          publishRequirements: false,
+          certificates: parsedCertificates,
+          gstVerified: false,
+        };
+        break;
+      }
+    }
+
+    const Model =
+      role === "customer"
+        ? Customer
+        : role === "inspector"
+        ? Inspector
+        : InspectionCompany;
+
+    const emailField = role === "inspection_company" ? "companyEmail" : "email";
+    const emailValue = userData[emailField];
+
+    if (!emailValue) {
+      return next(errorHandler(400, "Email is required"));
+    }
+
+    const emailExist = await Model.findOne({ [emailField]: emailValue });
+    if (emailExist) return next(errorHandler(400, "Email already exists"));
+
+    const hashedPassword = await bcrypt.hash(userData.password, 12);
+    userData.password = hashedPassword;
+
+    const token = crypto.randomBytes(32).toString("hex");
+    userData.emailVerificationToken = token;
+    userData.verificationExpires = Date.now() + 60 * 60 * 1000 * 24;
+    userData.isVerified = false;
+
+    const newUser = await Model.create(userData);
+
+    const displayName =
+      userData.companyName ||
+      userData.name ||
+      `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+      "User";
+
+    await sendVerificationEmail(emailValue, displayName, token, role);
+
+    const { password: _ignored, ...userDetails } = newUser._doc;
+
+    return res.status(201).json({
+      success: true,
+      message: "Signup successful. Please verify your email to activate your account.",
+      user: userDetails,
+    });
+  } catch (error) {
+    return next(errorHandler(500, error.message));
+  }
+};
+
 
 const signInController = async (req, res, next) => {
   try {

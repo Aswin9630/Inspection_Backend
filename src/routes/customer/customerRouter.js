@@ -12,7 +12,8 @@ const {
   getEnquiryDetails,
   getCustomerPayments,
   getCustomerAnalysis,getWonInspectors,
-  getDashboardStats
+  getDashboardStats,
+  updateCustomerGSTController
 } = require("../../controllers/customer/customerController");
 
 const customerUploader = createUploader("customers");
@@ -34,6 +35,12 @@ router.patch(
   ]),
   updateCustomerDocumentsController
 );
+router.patch(
+  "/profile/update-gst",
+  verifyUser,
+  updateCustomerGSTController
+);
+
 router.get("/won-inspections", verifyUser, getWonInspectors);
 router.get("/dashboardStatus", verifyUser, getDashboardStats);
 
